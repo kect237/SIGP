@@ -1,0 +1,18 @@
+{
+	"folders": [
+		{
+			"name": "rentals",
+			"path": "../../../rentals"
+		},
+		{
+			"name": "my firsthapp",
+			"path": "../../../../Desktop/mobile/my firsthapp"
+		},
+		{
+			"path": ".."
+		}
+	],
+	"settings": {
+		"liveServer.settings.multiRootWorkspaceName": "SGIP-PROJET"
+	}
+}

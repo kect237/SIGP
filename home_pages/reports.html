@@ -1,0 +1,202 @@
+<div class="page-header">
+  <h1 class="title">Rapports & Statistiques</h1>
+
+  <div class="header-actions">
+
+    <select id="periodSelect" class="btn btn-outline">
+      <option value="today">Aujourd'hui</option>
+      <option value="week">Cette semaine</option>
+      <option value="month" selected>Ce mois</option>
+      <option value="year">Cette année</option>
+      <option value="custom">Personnalisée</option>
+    </select>
+
+    <input
+      type="date"
+      id="dateDebut"
+      style="display:none;"
+    >
+
+    <input
+      type="date"
+      id="dateFin"
+      style="display:none;"
+    >
+
+    <button
+      class="btn btn-green"
+      onclick="exportReportsPDF()"
+    >
+      📥 Exporter PDF
+    </button>
+
+  </div>
+</div>
+
+
+<!-- ============================= -->
+<!-- 4 CARTES KPI -->
+<!-- ============================= -->
+
+<div class="cards">
+
+  <div class="card">
+    <div class="card-header">
+      <h4>Taux de Présence Global</h4>
+
+      <div
+        class="card-icon"
+        style="background:#dcfce7;"
+      >
+        %
+      </div>
+    </div>
+
+    <div
+      class="value"
+      id="statPresenceRate"
+    >
+      0%
+    </div>
+  </div>
+
+
+  <div class="card">
+
+    <div class="card-header">
+      <h4>Sessions Totales</h4>
+
+      <div
+        class="card-icon"
+        style="background:#e0e7ff;"
+      >
+        📊
+      </div>
+    </div>
+
+    <div
+      class="value"
+      id="statSessions"
+    >
+      0
+    </div>
+
+  </div>
+
+
+  <div class="card">
+
+    <div class="card-header">
+      <h4>Retards</h4>
+
+      <div
+        class="card-icon"
+        style="background:#fee2e2;"
+      >
+        ⏰
+      </div>
+    </div>
+
+    <div
+      class="value"
+      id="statRetards"
+    >
+      0
+    </div>
+
+  </div>
+
+
+  <div class="card">
+
+    <div class="card-header">
+      <h4>Absences</h4>
+
+      <div
+        class="card-icon"
+        style="background:#ffedd5;"
+      >
+        ❌
+      </div>
+    </div>
+
+    <div
+      class="value"
+      id="statAbsences"
+    >
+      0
+    </div>
+
+  </div>
+
+</div>
+
+
+<!-- ============================= -->
+<!-- GRAPHIQUE -->
+<!-- ============================= -->
+
+<div class="table-box">
+
+  <h3 style="margin-bottom:16px;">
+    Évolution Mensuelle
+  </h3>
+
+  <div
+    id="monthlyChart"
+    style="
+      min-height:300px;
+      padding:20px;
+      display:flex;
+      align-items:flex-end;
+      gap:12px;
+      overflow-x:auto;
+    "
+  >
+    Chargement...
+  </div>
+
+</div>
+
+
+<!-- ============================= -->
+<!-- RAPPORTS -->
+<!-- ============================= -->
+
+<div
+  class="table-box"
+  style="margin-top:20px;"
+>
+
+  <h3 style="margin-bottom:16px;">
+    Rapports Générés
+  </h3>
+
+  <table class="user-table">
+
+    <thead>
+
+      <tr>
+        <th>NOM DU RAPPORT</th>
+        <th>TYPE</th>
+        <th>PÉRIODE</th>
+        <th>GÉNÉRÉ LE</th>
+        <th>STATUT</th>
+        <th>ACTIONS</th>
+      </tr>
+
+    </thead>
+
+    <tbody id="reportsTableBody">
+
+      <tr>
+        <td colspan="6">
+          Chargement...
+        </td>
+      </tr>
+
+    </tbody>
+
+  </table>
+
+</div>

@@ -1,0 +1,217 @@
+<div class="page-header">
+  <h1 class="title">Paramètres</h1>
+</div>
+
+<!-- ONGLETS -->
+<div class="tabs">
+  <button class="tab-btn active" data-tab="general" onclick="switchSettingsTab('general', this)">Général</button>
+  <button class="tab-btn" data-tab="roles" onclick="switchSettingsTab('roles', this)">Utilisateurs & Rôles</button>
+  <button class="tab-btn" data-tab="notifications" onclick="switchSettingsTab('notifications', this)">Notifications</button>
+  <button class="tab-btn" data-tab="securite" onclick="switchSettingsTab('securite', this)">Sécurité</button>
+  <button class="tab-btn" data-tab="apparence" onclick="switchSettingsTab('apparence', this)">Apparence</button>
+</div>
+
+<!-- CONTENU ONGLET GENERAL -->
+<div class="settings-box" id="tab-general">
+  <h3>Informations de l'Organisation</h3>
+  
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Nom de l'organisation</label>
+      <input type="text" value="SGIP Corporation" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Email de contact</label>
+      <input type="email" value="contact@sgip.com" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Téléphone</label>
+      <input type="text" value="+237 6 90 00 00 00" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Adresse</label>
+      <input type="text" value="Douala, Littoral, Cameroun" class="form-input">
+    </div>
+  </div>
+
+  <h3 style="margin-top:30px;">Préférences Système</h3>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Langue par défaut</label>
+      <select class="form-input">
+        <option>Français</option>
+        <option>English</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Fuseau horaire</label>
+      <select class="form-input">
+        <option>GMT+1 - Afrique/Douala</option>
+        <option>GMT+0 - UTC</option>
+      </select>
+    </div>
+  </div>
+
+  <h3 style="margin-top:30px;">Sauvegarde & Données</h3>
+  <div class="setting-row">
+    <div>
+      <strong>Sauvegarde automatique</strong>
+      <p>Toutes les 24h à 02:00</p>
+    </div>
+    <label class="switch">
+      <input type="checkbox" checked>
+      <span class="slider"></span>
+    </label>
+  </div>
+  <div class="setting-row">
+    <div>
+      <strong>Exporter toutes les données</strong>
+      <p>Télécharger un backup complet</p>
+    </div>
+    <button class="btn btn-outline">⬇ Télécharger</button>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-outline">Annuler</button>
+    <button class="btn btn-green">Enregistrer les modifications</button>
+  </div>
+</div>
+
+<!-- CONTENU ONGLET UTILISATEURS & ROLES -->
+<div class="settings-box" id="tab-roles" style="display:none;">
+  <h3>Rôles disponibles</h3>
+
+  <div class="setting-row">
+    <div>
+      <strong>Admin</strong>
+      <p>Accès complet : gestion des utilisateurs, sessions, rapports et paramètres</p>
+    </div>
+  </div>
+  <div class="setting-row">
+    <div>
+      <strong>Responsable</strong>
+      <p>Peut créer des sessions et effectuer le pointage des présences</p>
+    </div>
+  </div>
+  <div class="setting-row">
+    <div>
+      <strong>Utilisateur</strong>
+      <p>Peut consulter ses propres présences</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:30px;">Paramètres d'inscription</h3>
+  <div class="setting-row">
+    <div>
+      <strong>Auto-approbation des nouveaux comptes</strong>
+      <p>Les nouveaux utilisateurs sont activés automatiquement</p>
+    </div>
+    <label class="switch">
+      <input type="checkbox">
+      <span class="slider"></span>
+    </label>
+  </div>
+  <div class="setting-row">
+    <div>
+      <strong>Rôle par défaut</strong>
+      <p>Rôle attribué à tout nouveau compte créé</p>
+    </div>
+    <select class="form-input" style="max-width:200px;">
+      <option>Utilisateur</option>
+      <option>Responsable</option>
+      <option>Admin</option>
+    </select>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-outline">Annuler</button>
+    <button class="btn btn-green">Enregistrer les modifications</button>
+  </div>
+</div>
+
+<!-- CONTENU ONGLET NOTIFICATIONS -->
+<div class="settings-box" id="tab-notifications" style="display:none;">
+  <h3>Préférences de notifications</h3>
+  <div class="setting-row">
+    <div>
+      <strong>Notifications par email</strong>
+      <p>Recevoir un email lors d'évènements importants (nouvelle session, absence, etc.)</p>
+    </div>
+    <label class="switch">
+      <input type="checkbox" checked>
+      <span class="slider"></span>
+    </label>
+  </div>
+  <div class="setting-row">
+    <div>
+      <strong>Alertes de retard</strong>
+      <p>Être notifié lorsqu'un utilisateur pointe en retard</p>
+    </div>
+    <label class="switch">
+      <input type="checkbox">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-outline">Annuler</button>
+    <button class="btn btn-green">Enregistrer les modifications</button>
+  </div>
+</div>
+
+<!-- CONTENU ONGLET SECURITE -->
+<div class="settings-box" id="tab-securite" style="display:none;">
+  <h3>Sécurité du compte</h3>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Ancien mot de passe</label>
+      <input type="password" class="form-input">
+    </div>
+    <div class="form-group">
+      <label>Nouveau mot de passe</label>
+      <input type="password" class="form-input">
+    </div>
+  </div>
+  <div class="setting-row">
+    <div>
+      <strong>Authentification à deux facteurs</strong>
+      <p>Ajoute une couche de sécurité supplémentaire à la connexion</p>
+    </div>
+    <label class="switch">
+      <input type="checkbox">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-outline">Annuler</button>
+    <button class="btn btn-green">Enregistrer les modifications</button>
+  </div>
+</div>
+
+<!-- CONTENU ONGLET APPARENCE -->
+<div class="settings-box" id="tab-apparence" style="display:none;">
+  <h3>Apparence</h3>
+  <div class="form-grid">
+    <div class="form-group">
+      <label>Thème</label>
+      <select class="form-input" id="theme-select" onchange="applyTheme(this.value)">
+        <option>Clair</option>
+        <option>Sombre</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Couleur principale</label>
+      <select class="form-input" id="accent-select" onchange="applyAccent(this.value)">
+        <option>Bleu</option>
+        <option>Vert</option>
+        <option>Violet</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-outline">Annuler</button>
+    <button class="btn btn-green">Enregistrer les modifications</button>
+  </div>
+</div>

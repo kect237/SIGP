@@ -1,0 +1,131 @@
+
+        * { 
+            margin: 0;
+            padding: 0; 
+            box-sizing: border-box;
+            font-family: 'Segoe UI', sans-serif; 
+        }
+        body { 
+            background: #f5f7fb;
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+        }
+        .card { 
+            background: white; 
+            padding: 40px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+            width: 500px;
+         }
+        .logo { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            margin-bottom: 10px; 
+            color: #1e3a8a; 
+            font-weight: bold; 
+            font-size: 18px;
+            justify-content: center;
+        }
+             .logo-icon {
+                width: 32px;
+                height: 32px;
+                background: #1e3a8a;
+                border-radius: 8px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+         }
+
+             .logo-icon svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .logo-text {
+                font-size: 18px;
+                font-weight: 700;
+                color: #1e3a8a;
+                letter-spacing: 0.5px;
+            }
+        h1 { 
+            color: #1e3a8a; 
+            font-size: 28px; 
+            margin-top: 5px;
+            margin-bottom: 8px; 
+            text-align: center;
+        }
+        .subtitle { 
+            color: #6b7280; 
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        label { 
+            font-weight: 600; 
+            display: block;
+            margin-bottom: 5px; 
+            color: #374151; 
+        }
+        input[type="text"], input[type="email"], input[type="password"] { 
+            width: 100%; 
+            padding: 12px; 
+            border: 1px solid #d1d5db; 
+            border-radius: 8px; 
+            background: #f3f4f6; 
+            margin-bottom: 15px;
+        }
+        .options { 
+            margin-bottom: 20px; 
+            font-size: 14px; 
+        }
+        button { width: 100%; 
+            padding: 14px; background: #1e3a8a; 
+            color: white; 
+            border: none; 
+            border-radius: 8px; 
+            font-size: 16px; 
+            font-weight: bold; cursor: pointer; 
+        }
+        button:hover { 
+            background: #1e40af; 
+        }
+        .login-link { 
+            text-align: center; 
+            margin-top: 20px;
+         }
+        .login-link a { 
+            color: #10b981;
+           text-decoration: none;
+           font-weight: 500;
+        }
+        .login-link a:hover{
+         text-decoration: underline;
+
+        }
+        .message { 
+            padding: 10px; 
+            border-radius: 8px; 
+            margin-bottom: 15px; 
+            text-align: center; 
+        }
+        .error { 
+            background: #fee2e2; 
+            color: #dc2626; 
+        }
+        .success { 
+            background: #dcfce7; 
+            color: #16a34a; 
+        }
+       footer {
+        text-align: center;
+        margin-top: 24px;
+        font-size: 14px;
+        color: #9ca3af;
+  }
+     footer a {
+        color: #6b7280;
+        text-decoration: none;
+        margin: 0 6px;
+        }

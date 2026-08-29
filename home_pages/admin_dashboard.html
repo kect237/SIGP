@@ -1,0 +1,1763 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SGIP - Organisation</title>
+
+  <!-- CHARGER LES 2 CSS -->
+  <link rel="stylesheet" href="/CSS/admin_dashboard.css">
+  <link rel="stylesheet" href="/CSS/dashboard.css">
+</head>
+
+<body>
+  <button class="menu-toggle" id="menuToggle">☰</button>
+  <!-- SIDEBAR -->
+  <div class="sidebar" id="sidebar">
+    <div>
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <!-- 1. Le bouclier -->
+            <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4z" />
+            <!-- 2. Le check -->
+            <path d="M9 12l2 2 4-4" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div class="logo-text">ORGANISATION</div>
+      </div>
+
+      <div class="menu">
+        <div class="menu-item active" onclick="loadPage('dashboard.html', this)">
+          <svg viewBox="0 0 24 24">
+            <path d="M3 13h8V3H3v10zM3 21h8v-6H3v6zM13 21h8V11h-8v10zM13 3v6h8V3h-8z" />
+          </svg>
+          Dashboard
+        </div>
+        <div class="menu-item" onclick="loadPage('users.html', this)">
+          <svg viewBox="0 0 24 24">
+            <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          Utilisateurs
+        </div>
+        <div class="menu-item" onclick="loadPage('sessions.html', this)">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
+          </svg>
+          Sessions
+        </div>
+        <div class="menu-item" onclick="loadPage('reports.html', this)">
+          <svg viewBox="0 0 24 24">
+            <path d="M16 11V3H8v6H2v12h20V11h-6zm-6-6h4v14h-4V5zm10 14h-4V9h4v10zm-2-16h-2V1h2v2z" />
+          </svg>
+          Rapports
+        </div>
+        <div class="menu-item" onclick="loadPage('settings.html', this)">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94L14.4 2.81c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41L9.25 5.35c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+          </svg>
+          Paramètres
+        </div>
+        <div class="menu-item" onclick="loadPage('presences.html', this)">
+          <svg viewBox="0 0 24 24">
+            <path
+              d="M19 3h-1V1h-2v2H8V1H6v2H5c-1.11 0-1.99.9-1.99 2L3 19c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H5V8h14v11z" />
+          </svg>
+          Présences
+        </div>
+        <button class="btn-logout" id="logoutBtn">Déconnexion</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZONE QUI VA CHANGER -->
+  <div id="content" class="main">
+    Chargement...
+  </div>
+
+  <script>
+    // Voir les détails d'un utilisateur
+    window.viewUser = function (id) {
+      const u = allUsersData.find(user => user.Id === id);
+      if (u) {
+        alert(`Détails Utilisateur :\n\nNom : ${u.Nom}\nPrénom : ${u.Prenom}\nEmail : ${u.Email}\nStatut : ${u.EstActif ? 'Actif' : 'Inactif'}`);
+      }
+    };
+
+    // Modifier un utilisateur (exemple simple via prompt ou pré-remplissage)
+    window.editUser = async function (id) {
+      const u = allUsersData.find(user => user.Id === id);
+      if (!u) return;
+
+      // Saisie rapide des nouvelles informations
+      const nouveauNom = prompt("Nom de l'utilisateur :", u.Nom || '');
+      if (nouveauNom === null) return; // Annulation
+
+      const nouveauPrenom = prompt("Prénom de l'utilisateur :", u.Prenom || '');
+      if (nouveauPrenom === null) return;
+
+      const nouvelEmail = prompt("Email de l'utilisateur :", u.Email || '');
+      if (nouvelEmail === null) return;
+
+      const estActif = confirm("L'utilisateur doit-il être actif ? (OK = Actif, Annuler = Inactif)");
+
+      try {
+        const res = await fetch(`http://localhost:3001/api/users/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            nom: nouveauNom,
+            prenom: nouveauPrenom,
+            email: nouvelEmail,
+            estActif: estActif
+          })
+        });
+
+
+        const data = await res.json();
+
+        if (data.success) {
+          alert("Utilisateur modifié avec succès !");
+          window.loadUsers(); // Rafraîchir le tableau
+        } else {
+          alert("Erreur lors de la modification : " + data.message);
+        }
+      } catch (err) {
+        console.error("Erreur modification :", err);
+        alert("Impossible de contacter le serveur.");
+      }
+    };
+
+    // Supprimer un utilisateur
+    window.deleteUser = async function (id) {
+      if (!confirm("Voulez-vous vraiment supprimer cet utilisateur ? L'action est irréversible.")) return;
+
+      try {
+        const res = await fetch(`http://localhost:3001/api/users/${id}`, {
+          method: 'DELETE'
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          // Recharger la liste et mettre à jour le tableau
+          window.loadUsers();
+        } else {
+          alert("Erreur lors de la suppression : " + data.message);
+        }
+      } catch (err) {
+        console.error("Erreur suppression :", err);
+        alert("Impossible de contacter le serveur.");
+      }
+    };
+    async function fetchAdminStats() {
+      try {
+        const response = await fetch('http://localhost:3001/api/admin/statistics');
+        const data = await response.json();
+
+        if (data.success) {
+          document.getElementById('stat-total-users').textContent = data.stats.totalUsers;
+          document.getElementById('stat-presents-today').textContent = data.stats.presentsToday;
+          document.getElementById('stat-presence-rate').textContent = `${data.stats.presenceRate}%`;
+          document.getElementById('stat-active-sessions').textContent = data.stats.activeSessions;
+        }
+      } catch (err) {
+        console.error("Erreur récupération stats :", err);
+      }
+    }
+    // Charger et afficher les dernières sessions
+    async function loadRecentSessions() {
+      try {
+        const response = await fetch('http://localhost:3001/api/sessions/recent');
+        const data = await response.json();
+
+        if (data.success && data.sessions) {
+          const tbody = document.getElementById('recent-sessions-body');
+          if (!tbody) return;
+
+          tbody.innerHTML = data.sessions.map(s => {
+            const dateFormatted = new Date(s.DateCreation).toLocaleString('fr-FR', {
+              day: '2-digit', month: 'short', year: 'numeric',
+              hour: '2-digit', minute: '2-digit'
+            });
+
+            const isEnCours = s.EstActive === 1 || s.EstActive === true;
+
+            const badge = isEnCours
+              ? `<span style="background:#fff3cd; color:#856404; padding:4px 10px; border-radius:12px; font-weight:600; font-size:0.85em;">En cours</span>`
+              : `<span style="background:#d4edda; color:#155724; padding:4px 10px; border-radius:12px; font-weight:600; font-size:0.85em;">Terminée</span>`;
+
+            const action = isEnCours
+              ? `<button onclick="closeSession(${s.Id})" style="cursor:pointer; border:none; background:#dc3545; color:white; border-radius:4px; padding:3px 8px;">Fermer</button>`
+              : `<span style="color:#aaa;">—</span>`;
+
+            return `
+          <tr>
+            <td><strong>${s.Titre}</strong> <br><small style="color:#666;">${s.Responsable || 'Admin'}</small></td>
+            <td>${dateFormatted}</td>
+            <td>${badge}</td>
+            <td>${action}</td>
+          </tr>
+        `;
+          }).join('');
+        }
+      } catch (err) {
+        console.error("Erreur chargement récents :", err);
+      }
+    }
+    // fermeture d'une session
+    window.closeSession = async function (sessionId) {
+      if (!confirm("Voulez-vous vraiment fermer cette session ?")) return;
+
+      try {
+        const response = await fetch('http://localhost:3001/api/sessions/close', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sessionId })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // Recharger immédiatement les stats et le tableau
+          fetchAdminStats();
+          loadRecentSessions();
+        } else {
+          alert("Erreur : " + data.message);
+        }
+      } catch (err) {
+        console.error("Erreur lors de la fermeture :", err);
+        alert("Impossible de contacter le serveur.");
+      }
+    };
+  //   async function loadPage(page, element) {
+  //     try {
+  //       const res = await fetch(page);
+  //       const data = await res.text();
+  //       document.getElementById('content').innerHTML = data;
+
+  //       document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+  //       element.classList.add('active');
+  //     } catch (error) {
+  //       document.getElementById('content').innerHTML = "<p style='color:red'>Erreur: Impossible de charger " + page + "</p>";
+  //     }
+  //     if (page === 'dashboard.html' || page.includes('dashboard')) {
+  //       fetchAdminStats();
+  //       loadRecentSessions();
+  //     }
+  //     if (page === 'users.html' || page.includes('utilisateurs')) {
+  //       window.loadUsers();
+  //     }
+  //     if (page === 'presences.html' || page.includes('presences')) {
+  //       if (typeof chargerPresences === 'function') {
+  //           chargerPresences();
+  //       }
+  //   }
+  //     if (page === 'reports.html') {
+  //       setTimeout(() => {
+  //           initReportsPage();
+  //       }, 50);
+  //   }
+  // }
+ window.loadPage = async function(page, element) {
+
+    try {
+        console.log("chargement :" , page)
+        const res = await fetch(page);
+
+        if (!res.ok) {
+            throw new Error(
+                "Erreur HTTP " + res.status
+            );
+        }
+
+        const data = await res.text();
+
+        // Charger la page dans le contenu principal
+        document.getElementById('content').innerHTML = data;
+
+
+        // ================================
+        // MENU ACTIF
+        // ================================
+
+        document
+            .querySelectorAll('.menu-item')
+            .forEach(item => {
+                item.classList.remove('active');
+            });
+
+        if (element) {
+            element.classList.add('active');
+        }
+
+
+        // ================================
+        // DASHBOARD
+        // ================================
+
+        if (
+            page === 'dashboard.html' ||
+            page.includes('dashboard')
+        ) {
+
+            fetchAdminStats();
+            loadRecentSessions();
+
+        }
+
+
+        // ================================
+        // UTILISATEURS
+        // ================================
+
+        if (
+            page === 'users.html' ||
+            page.includes('utilisateurs')
+        ) {
+
+            if (
+                typeof window.loadUsers === 'function'
+            ) {
+
+                window.loadUsers();
+
+            }
+
+        }
+
+
+        // ================================
+        // PRÉSENCES
+        // ================================
+
+        if (
+            page === 'presences.html' ||
+            page.includes('presences')
+        ) {
+
+            console.log(
+                "📋 Page Présences chargée"
+            );
+
+            if (
+                typeof window.chargerPresences === 'function'
+            ) {
+
+                console.log(
+                    "🔄 Chargement des présences..."
+                );
+
+                window.chargerPresences();
+
+            } else {
+
+                console.error(
+                    "❌ chargerPresences() introuvable"
+                );
+
+            }
+
+        }
+
+    } catch (error) {
+
+        console.error(
+            "❌ Erreur loadPage :",
+            error
+        );
+
+        document.getElementById('content').innerHTML =
+            "<p style='color:red'>" +
+            "Erreur : Impossible de charger " +
+            page +
+            "</p>";
+    }
+}
+    // Charge le dashboard au démarrage
+    document.addEventListener('DOMContentLoaded', () => {
+      loadPage('dashboard.html', document.querySelector('.menu-item.active'));
+    });
+
+    // Gestion des onglets de la page Paramètres (settings.html)
+    window.switchSettingsTab = function (tabName, btnElement) {
+      // Boutons : gérer la classe active
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      btnElement.classList.add('active');
+
+      // Contenus : masquer tout, afficher le bon
+      document.querySelectorAll('.settings-box').forEach(box => box.style.display = 'none');
+      const target = document.getElementById('tab-' + tabName);
+      if (target) target.style.display = 'block';
+      //Si on affiche l'onglet Apparence, synchroniser les <select> avec le thème actuel
+      if (tabName === 'apparence') syncAppearanceControls();
+
+    };
+    // THEME (clair / sombre) ET COULEUR PRINCIPALE
+    // ======================================================
+    window.applyTheme = function (value) {
+      const theme = (value === 'Sombre') ? 'dark' : 'light';
+      document.body.setAttribute('data-theme', theme);
+      localStorage.setItem('sgip-theme', theme);
+    };
+    window.applyAccent = function (value) {
+      const map = { 'Bleu': 'blue', 'Vert': 'green', 'Violet': 'violet' };
+      const accent = map[value] || 'blue';
+      document.body.setAttribute('data-accent', accent);
+      localStorage.setItem('sgip-accent', accent);
+    };
+
+    // Remet les <select> de l'onglet Apparence sur la valeur actuellement active
+    function syncAppearanceControls() {
+      const themeSelect = document.getElementById('theme-select');
+      const accentSelect = document.getElementById('accent-select');
+      const theme = localStorage.getItem('sgip-theme') || 'light';
+      const accent = localStorage.getItem('sgip-accent') || 'blue';
+
+      if (themeSelect) themeSelect.value = (theme === 'dark') ? 'Sombre' : 'Clair';
+      if (accentSelect) {
+        const labelMap = { blue: 'Bleu', green: 'Vert', violet: 'Violet' };
+        accentSelect.value = labelMap[accent] || 'Bleu';
+      }
+    }
+
+    // Applique le thème et la couleur sauvegardés dès le chargement de la page
+    (function initTheme() {
+      const savedTheme = localStorage.getItem('sgip-theme') || 'light';
+      const savedAccent = localStorage.getItem('sgip-accent') || 'blue';
+      document.body.setAttribute('data-theme', savedTheme);
+      document.body.setAttribute('data-accent', savedAccent);
+    })();
+
+  </script>
+  <!-- POPUP MODAL -->
+  <div id="modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 id="modal-title">Titre</h2>
+        <span class="modal-close"> &times;</span>
+      </div>
+      <div class="modal-body" id="modal-body">
+        Contenu ici
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" id="modal-cancel">Annuler</button>
+        <button class="btn btn-green" id="modal-save">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Structure de la boîte Popup -->
+  <div id="addUserModal"
+    style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:1000;">
+    <div
+      style="background:white; padding:25px; border-radius:12px; width:400px; box-shadow:0 4px 15px rgba(0,0,0,0.2);">
+      <h3 style="margin-top:0; margin-bottom:15px; color:#333;">Ajouter un utilisateur</h3>
+      <form id="addUserForm" onsubmit="submitAddUser(event)">
+        <div style="margin-bottom:12px;">
+          <label style="display:block; font-size:0.9em; margin-bottom:4px;">Matricule :</label>
+          <input type="text" id="addMatricule" required placeholder="Ex: MAT-001"
+            style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="display:block; font-size:0.9em; margin-bottom:4px;">Nom :</label>
+          <input type="text" id="addNom" required
+            style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="display:block; font-size:0.9em; margin-bottom:4px;">Prénom :</label>
+          <input type="text" id="addPrenom" required
+            style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="display:block; font-size:0.9em; margin-bottom:4px;">Email :</label>
+          <input type="email" id="addEmail" required
+            style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:12px;">
+          <label style="display:block; font-size:0.9em; margin-bottom:4px;">Mot de passe :</label>
+          <input type="password" id="addMotDePasse" required placeholder="••••••••"
+            style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:20px; display:flex; align-items:center; gap:8px;">
+          <input type="checkbox" id="addEstActif" checked style="cursor:pointer;">
+          <label for="addEstActif" style="font-size:0.9em; cursor:pointer;">Compte actif</label>
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:10px;">
+          <button type="button" onclick="closeAddUserModal()"
+            style="padding:8px 16px; border:none; background:#e0e0e0; border-radius:6px; cursor:pointer;">Annuler</button>
+          <button type="submit"
+            style="padding:8px 16px; border:none; background:#28a745; color:white; border-radius:6px; cursor:pointer; font-weight:bold;">Enregistrer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+
+  <script>
+    window.openAddUserModal = function () {
+      const modal = document.getElementById('addUserModal');
+      if (modal) {
+        document.getElementById('addUserForm')?.reset();
+        modal.style.display = 'flex';
+      } else {
+        alert("Le modal 'addUserModal' est introuvable dans le code HTML.");
+      }
+    };
+
+    window.closeAddUserModal = function () {
+      const modal = document.getElementById('addUserModal');
+      if (modal) {
+        modal.style.display = 'none';
+      }
+    };
+    const modal = document.getElementById('modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalBody = document.getElementById('modal-body');
+
+    function openModal(titre, contenuHTML) {
+      modalTitle.textContent = titre;
+      modalBody.innerHTML = contenuHTML;
+      modal.classList.add('show');
+    }
+
+    function closeModal() {
+      modal.classList.remove('show');
+    }
+
+    document.querySelector('.modal-close').onclick = closeModal;
+    document.getElementById('modal-cancel').onclick = closeModal;
+    window.onclick = (e) => { if (e.target == modal) closeModal(); }
+
+
+    // Variable globale pour conserver la liste brute des utilisateurs
+    let allUsersData = [];
+
+    // Charger les utilisateurs depuis l'API
+    window.loadUsers = async function () {
+      try {
+        const response = await fetch('http://localhost:3001/api/users/all');
+        const data = await response.json();
+
+        if (data.success && data.users) {
+          allUsersData = data.users;
+          renderUsersTable(allUsersData);
+        }
+      } catch (err) {
+        console.error("Erreur chargement utilisateurs :", err);
+      }
+    };
+
+    // Fonction de rendu du tableau
+    function renderUsersTable(usersList) {
+      const tbody = document.getElementById('users-table-body');
+      if (!tbody) return;
+
+      if (usersList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px; color:#888;">Aucun utilisateur trouvé</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = usersList.map((u, index) => {
+        const initial = (u.Prenom || u.Nom || 'U').charAt(0).toUpperCase();
+
+        const presenceFormatted = u.DernierePresence
+          ? new Date(u.DernierePresence).toLocaleString('fr-FR', {
+            day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit'
+          })
+          : 'Aucune';
+
+        const isActif = u.EstActif === 1 || u.EstActif === true;
+        const badge = isActif
+          ? `<span style="background:#e6f4ea; color:#137333; padding:4px 10px; border-radius:12px; font-weight:600; font-size:0.85em;">● Actif</span>`
+          : `<span style="background:#fce8e6; color:#c5221f; padding:4px 10px; border-radius:12px; font-weight:600; font-size:0.85em;">● Inactif</span>`;
+
+        return `
+      <tr>
+        <td>${index + 1}</td>
+        <td>
+          <div style="width:35px; height:35px; border-radius:50%; background:#4a6cf7; color:white; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:0.9em;">
+            ${initial}
+          </div>
+        </td>
+        <td><strong>${u.Nom || ''}</strong></td>
+        <td>${u.Prenom || ''}</td>
+        <td>${u.Email || ''}</td>
+        <td>${badge}</td>
+        <td>${presenceFormatted}</td>
+        <td>
+          <button onclick="window.viewUser('${u.Id}')" style="border:none; background:none; cursor:pointer; font-size:1.1em;" title="Voir">👁️</button>
+          <button onclick="window.editUser('${u.Id}')" style="border:none; background:none; cursor:pointer; font-size:1.1em;" title="Modifier">✏️</button>
+          <button onclick="window.deleteUser('${u.Id}')" style="border:none; background:none; cursor:pointer; font-size:1.1em; color:#dc3545;" title="Supprimer">🗑️</button>
+        </td>
+      </tr>
+    `;
+      }).join('');
+    }
+
+    // Fonction de filtrage appelée à chaque saisie
+    window.filterUsers = function () {
+      const searchInput = document.getElementById('user-search-input');
+      const statusSelect = document.getElementById('user-status-filter');
+
+      const query = searchInput ? searchInput.value.toLowerCase().trim() : '';
+      const statusFilter = statusSelect ? statusSelect.value : 'tous';
+
+      const filtered = allUsersData.filter(u => {
+        // 1. Filtre Recherche Texte (Nom, Prénom, Email)
+        const nom = (u.Nom || '').toLowerCase();
+        const prenom = (u.Prenom || '').toLowerCase();
+        const email = (u.Email || '').toLowerCase();
+        const matchesText = nom.includes(query) || prenom.includes(query) || email.includes(query);
+
+        // 2. Filtre Statut (Actif / Inactif)
+        const isActif = u.EstActif === 1 || u.EstActif === true;
+        let matchesStatus = true;
+
+        if (statusFilter === 'actif') {
+          matchesStatus = isActif;
+        } else if (statusFilter === 'inactif') {
+          matchesStatus = !isActif;
+        }
+
+        // L'utilisateur doit valider les deux critères
+        return matchesText && matchesStatus;
+      });
+
+      renderUsersTable(filtered);
+    };
+
+    // UN SEUL ECOUTEUR POUR TOUT
+    document.addEventListener('click', function (e) {
+
+      window.submitAddUser = async function (event) {
+        event.preventDefault();
+
+        const newUser = {
+          matricule: document.getElementById('addMatricule').value.trim(),
+          nom: document.getElementById('addNom').value.trim(),
+          prenom: document.getElementById('addPrenom').value.trim(),
+          email: document.getElementById('addEmail').value.trim(),
+          motDePasse: document.getElementById('addMotDePasse').value,
+          estActif: document.getElementById('addEstActif').checked
+        };
+
+        try {
+          const res = await fetch('http://localhost:3001/api/users/add', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(newUser)
+          });
+
+          const data = await res.json();
+
+          if (data.success) {
+            closeAddUserModal();
+            window.loadUsers();
+          } else {
+            alert("Erreur lors de l'ajout : " + data.message);
+          }
+        } catch (err) {
+          console.error("Erreur ajout utilisateur :", err);
+          alert("Impossible de contacter le serveur.");
+        }
+      };
+
+
+      // 2. SI ON CLIQUE SUR NOUVELLE SESSION
+      if (e.target.textContent.includes('Nouvelle session')) {
+        openModal('Nouvelle Session', `
+      <div class="form-group">
+        <label>Titre de la session</label>
+        <input type="text" id="session-titre" class="form-input" placeholder="ex: Cours de Java, Réunion Mensuelle">
+      </div>
+      <div class="form-group">
+        <label>Responsable</label>
+        <input type="text" id="session-responsable" class="form-input" placeholder="ex: Dr. Fopa">
+      </div>
+    `);
+
+        document.getElementById('modal-save').style.display = 'block';
+
+        // Action lors du clic sur Enregistrer
+        document.getElementById('modal-save').onclick = async function () {
+          const titre = document.getElementById('session-titre').value.trim();
+          const responsable = document.getElementById('session-responsable').value.trim();
+
+          if (!titre) {
+            alert('Veuillez saisir un titre pour la session.');
+            return;
+          }
+
+          try {
+            const response = await fetch('http://localhost:3001/api/sessions/create', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ titre, responsable })
+            });
+
+            const data = await response.json();
+
+            if (data.success) {
+              alert(`Session "${titre}" ouverte avec succès !`);
+              closeModal();
+              // Recharge la page actuelle pour afficher les données à jour
+              await loadPage('dashboard.html', document.querySelector('.menu-item.active'));
+              fetchAdminStats();
+            } else {
+              alert('Erreur : ' + data.message);
+            }
+          } catch (err) {
+            console.error("Erreur enregistrement session :", err);
+            alert('Impossible de contacter le serveur.');
+          }
+        };
+      }
+
+
+      // Fonction pour fermer une session active
+      async function closeSession(id) {
+        if (!confirm("Voulez-vous fermer cette session ?")) return;
+
+        try {
+          const res = await fetch('http://localhost:3001/api/sessions/close', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId: id })
+          });
+          const data = await res.json();
+          if (data.success) {
+            fetchAdminStats();
+            loadRecentSessions();
+          }
+        } catch (err) {
+          console.error("Erreur fermeture session :", err);
+        }
+      }
+      // Déconnexion
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = "../index.html";
+      });
+
+
+
+      // Appeler la fonction au chargement du tableau de bord
+      document.addEventListener('DOMContentLoaded', fetchAdminStats);
+      // Fonction pour mettre à jour les infos de l'admin connecté
+      function updateAdminProfile() {
+        const userData = localStorage.getItem('user');
+
+        if (userData) {
+          const user = JSON.parse(userData);
+
+          const prenom = user.prenom || '';
+          const nom = user.nom || '';
+
+          // Calcul des initiales 
+          const initialePrenom = prenom.charAt(0).toUpperCase();
+          const initialeNom = nom.charAt(0).toUpperCase();
+          const initiales = `${initialePrenom}${initialeNom}` || 'KN';
+
+          // Recherche des éléments dans la page injectée
+          const adminInitialsEl = document.getElementById('adminInitials');
+          const adminNameEl = document.getElementById('adminName');
+
+          if (adminInitialsEl) adminInitialsEl.textContent = initiales;
+          if (adminNameEl) adminNameEl.textContent = `${prenom} ${nom}`;
+        }
+      }
+
+
+      async function loadPage(page, element) {
+        try {
+          const res = await fetch(page);
+          const data = await res.text();
+          // 1. On injecte le HTML
+          document.getElementById('content').innerHTML = data;
+
+          // 2. --- MISE À JOUR DIRECTE DU PROFIL ---
+          const userData = localStorage.getItem('user');
+          if (userData) {
+            const user = JSON.parse(userData);
+            const elInitials = document.getElementById('adminInitials');
+            const elName = document.getElementById('adminName');
+
+            if (elInitials && elName) {
+              const p = user.prenom || "";
+              const n = user.nom || "";
+              elInitials.textContent = (p.charAt(0) + n.charAt(0)).toUpperCase();
+              elName.textContent = p + " " + n;
+            }
+          }
+
+          document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+          if (element) element.classList.add('active');
+
+        } catch (error) {
+          document.getElementById('content').innerHTML = "<p style='color:red'>Erreur: Impossible de charger " + page + "</p>";
+        }
+      }
+
+
+      let toutesLesPresences = [];
+      let filtreActuel = "tous";
+
+      // ======================================================
+      // CHARGEMENT DES PRESENCES DU JOUR
+      // ======================================================
+
+      window.chargerPresences = async function () {
+        
+      
+
+        try {
+
+          const response = await fetch(
+            "http://localhost:3001/api/admin/presences/today"
+          );
+
+          if (!response.ok) {
+            throw new Error("HTTP " + response.status);
+          }
+
+          const data = await response.json();
+
+          console.log("Réponse API :", data);
+
+          if (!data.success) {
+            console.error(data.message);
+            return;
+          }
+
+          // Données reçues depuis SQL Server
+          toutesLesPresences = data.utilisateurs || [];
+
+
+          // ==================================================
+          // COMPTEURS
+          // ==================================================
+
+          const presentCount =
+            document.getElementById("present-count");
+
+          const absentCount =
+            document.getElementById("absent-count");
+
+
+          if (presentCount) {
+            presentCount.textContent =
+              `${data.presents}/${data.total}`;
+          }
+
+
+          if (absentCount) {
+            absentCount.textContent =
+              `${data.absents}/${data.total}`;
+          }
+
+
+          // ==================================================
+          // AFFICHER LE TABLEAU
+          // ==================================================
+
+          afficherPresences();
+
+        }
+
+        catch (error) {
+
+          console.error(
+            "Erreur lors du chargement des présences :",
+            error
+          );
+
+        }
+
+      }
+
+
+
+      // ======================================================
+      // AFFICHER LE TABLEAU
+      // ======================================================
+
+      window.afficherPresences = function() {
+
+        const tbody =
+          document.getElementById(
+            "presence-table-body"
+          );
+
+
+        if (!tbody) {
+
+          console.error(
+            "❌ presence-table-body introuvable"
+          );
+
+          return;
+        }
+
+
+        tbody.innerHTML = "";
+
+
+        let liste = toutesLesPresences;
+
+
+        // ==================================================
+        // FILTRE
+        // ==================================================
+
+        if (filtreActuel === "presents") {
+
+          liste = toutesLesPresences.filter(
+            personne => personne.Statut === "Présent"
+          );
+
+        }
+
+
+        if (filtreActuel === "absents") {
+
+          liste = toutesLesPresences.filter(
+            personne => personne.Statut === "Absent"
+          );
+
+        }
+
+
+        // ==================================================
+        // CREATION DES LIGNES
+        // ==================================================
+
+        liste.forEach(personne => {
+
+          const tr =
+            document.createElement("tr");
+
+
+          // Initiale pour la photo/avatar
+          const initiale =
+            (
+              personne.Prenom ||
+              personne.Nom ||
+              "?"
+            )
+              .charAt(0)
+              .toUpperCase();
+
+
+          // Heure
+          let heure = "--";
+
+
+          if (personne.Timestamp) {
+
+            heure =
+              new Date(
+                personne.Timestamp
+              ).toLocaleTimeString(
+                "fr-FR",
+                {
+                  hour: "2-digit",
+                  minute: "2-digit"
+                }
+              );
+
+          }
+
+
+          // Statut
+          const statut =
+            personne.Statut || "Absent";
+
+
+          tr.innerHTML = `
+
+            <td>
+                <div class="avatar">
+                    ${initiale}
+                </div>
+            </td>
+
+            <td>
+                ${personne.Matricule || "--"}
+            </td>
+
+            <td>
+                ${personne.Nom || ""}
+                ${personne.Prenom || ""}
+            </td>
+
+            <td>
+                ${heure}
+            </td>
+
+            <td>
+
+                <span class="status ${statut === "Présent"
+              ? "present"
+              : "absent"
+            }">
+
+                    ${statut}
+
+                </span>
+
+            </td>
+
+        `;
+
+
+          tbody.appendChild(tr);
+
+        });
+
+      }
+
+
+
+      // ======================================================
+      // FILTRE
+      // ======================================================
+
+      window.appliquerFiltre = function (filtre) {
+
+        filtreActuel = filtre;
+
+        afficherPresences();
+
+      };
+
+
+
+      // ======================================================
+      // RECHERCHE
+      // ======================================================
+
+      window.rechercherPresence = function() {
+
+        const input =
+          document.getElementById(
+            "presence-search"
+          );
+
+
+        if (!input) return;
+
+
+        const recherche =
+          input.value
+            .toLowerCase()
+            .trim();
+
+
+        const tbody =
+          document.getElementById(
+            "presence-table-body"
+          );
+
+
+        if (!tbody) return;
+
+
+        tbody.innerHTML = "";
+
+
+        let liste =
+          toutesLesPresences.filter(personne => {
+
+
+            // Filtre Présents
+            if (
+              filtreActuel === "presents" &&
+              personne.Statut !== "Présent"
+            ) {
+              return false;
+            }
+
+
+            // Filtre Absents
+            if (
+              filtreActuel === "absents" &&
+              personne.Statut !== "Absent"
+            ) {
+              return false;
+            }
+
+
+            // Recherche
+            const nom =
+              `${personne.Nom || ""} ${personne.Prenom || ""}`
+                .toLowerCase();
+
+
+            const matricule =
+              (personne.Matricule || "")
+                .toLowerCase();
+
+
+            return (
+              nom.includes(recherche) ||
+              matricule.includes(recherche)
+            );
+
+          });
+
+
+        // Affichage
+        liste.forEach(personne => {
+
+          const tr =
+            document.createElement("tr");
+
+
+          let heure = "--";
+
+
+          if (personne.Timestamp) {
+
+            heure =
+              new Date(
+                personne.Timestamp
+              ).toLocaleTimeString(
+                "fr-FR",
+                {
+                  hour: "2-digit",
+                  minute: "2-digit"
+                }
+              );
+
+          }
+
+
+          const initiale =
+            (
+              personne.Prenom ||
+              personne.Nom ||
+              "?"
+            )
+              .charAt(0)
+              .toUpperCase();
+
+
+          tr.innerHTML = `
+
+            <td>
+                <div class="avatar">
+                    ${initiale}
+                </div>
+            </td>
+
+            <td>
+                ${personne.Matricule || "--"}
+            </td>
+
+            <td>
+                ${personne.Nom || ""}
+                ${personne.Prenom || ""}
+            </td>
+
+            <td>
+                ${heure}
+            </td>
+
+            <td>
+
+                <span class="status ${personne.Statut === "Présent"
+              ? "present"
+              : "absent"
+            }">
+
+                    ${personne.Statut}
+
+                </span>
+
+            </td>
+
+        `;
+
+
+          tbody.appendChild(tr);
+
+        });
+
+      }
+
+
+
+      // ======================================================
+      // DEMARRAGE
+      // ======================================================
+
+      document.addEventListener(
+        "DOMContentLoaded",
+        function () {
+
+          chargerPresences();
+
+
+          // Recherche
+          const recherche =
+            document.getElementById(
+              "presence-search"
+            );
+
+
+          if (recherche) {
+
+            recherche.addEventListener(
+              "input",
+              rechercherPresence
+            );
+
+          }
+
+
+          // Actualisation toutes les 5 secondes
+          setInterval(
+            chargerPresences,
+            5000
+          );
+
+        }
+      )
+    });
+    let currentReportPeriod = {
+      dateDebut: null,
+      dateFin: null
+    };
+
+
+    // ------------------------------------------------------------
+    // Calcul des dates
+    // ------------------------------------------------------------
+
+    function getReportDates() {
+
+      const period =
+        document.getElementById('periodSelect')?.value;
+
+      const today = new Date();
+
+      let dateDebut;
+      let dateFin;
+
+      if (period === 'today') {
+
+        dateDebut = new Date(today);
+
+        dateFin = new Date(today);
+
+      }
+
+      else if (period === 'week') {
+
+        dateFin = new Date(today);
+
+        dateDebut = new Date(today);
+
+        const day = dateDebut.getDay();
+
+        const difference =
+          day === 0 ? 6 : day - 1;
+
+        dateDebut.setDate(
+          dateDebut.getDate() - difference
+        );
+
+      }
+
+      else if (period === 'month') {
+
+        dateDebut = new Date(
+          today.getFullYear(),
+          today.getMonth(),
+          1
+        );
+
+        dateFin = new Date(today);
+
+      }
+
+      else if (period === 'year') {
+
+        dateDebut = new Date(
+          today.getFullYear(),
+          0,
+          1
+        );
+
+        dateFin = new Date(today);
+
+      }
+
+      else if (period === 'custom') {
+
+        const debut =
+          document.getElementById('dateDebut')?.value;
+
+        const fin =
+          document.getElementById('dateFin')?.value;
+
+        if (!debut || !fin) {
+          return null;
+        }
+
+        return {
+          dateDebut: debut,
+          dateFin: fin
+        };
+      }
+
+      return {
+        dateDebut:
+          dateDebut.toISOString().slice(0, 10),
+
+        dateFin:
+          dateFin.toISOString().slice(0, 10)
+      };
+    }
+    // Charger les statistiques 
+
+    async function loadReportStatistics() {
+
+      const dates = getReportDates();
+
+      if (!dates) {
+        return;
+      }
+
+      currentReportPeriod = dates;
+
+      try {
+
+        const url =
+          `http://localhost:3001/api/admin/statistics` + `?dateDebut=${dates.dateDebut}` + `&dateFin=${dates.dateFin}`;
+
+        const response =
+          await fetch(url);
+
+        const data =
+          await response.json();
+
+        if (!data.success) {
+          throw new Error(data.message);
+        }
+
+        document.getElementById(
+          'statPresenceRate'
+        ).textContent =
+          `${data.stats.presenceRate}%`;
+
+        document.getElementById(
+          'statSessions'
+        ).textContent =
+          data.stats.totalSessions;
+
+        document.getElementById(
+          'statRetards'
+        ).textContent =
+          data.stats.totalRetards;
+
+        document.getElementById(
+          'statAbsences'
+        ).textContent =
+          data.stats.absences;
+
+      }
+
+      catch (error) {
+
+        console.error(
+          'Erreur statistiques :',
+          error
+        );
+
+      }
+    }
+    // Charger le graphique
+    // ------------------------------------------------------------
+
+    async function loadMonthlyChart() {
+
+      try {
+
+        const response =
+          await fetch(
+            'http://localhost:3001/api/admin/statistics/monthly'
+          );
+
+        const data =
+          await response.json();
+
+        if (!data.success) {
+          throw new Error(data.message);
+        }
+
+        const chart =
+          document.getElementById('monthlyChart');
+
+        if (!chart) return;
+
+        if (!data.data.length) {
+
+          chart.innerHTML =
+            '<p>Aucune donnée disponible.</p>';
+
+          return;
+        }
+
+        const max =
+          Math.max(
+            ...data.data.map(item =>
+              item.presences
+            )
+          );
+
+        chart.innerHTML =
+          data.data.map(item => {
+
+            const height =
+              max > 0
+                ? Math.max(
+                  10,
+                  (item.presences / max) * 220
+                )
+                : 10;
+
+            return `
+          <div
+            style="
+              min-width:55px;
+              height:250px;
+              display:flex;
+              flex-direction:column;
+              justify-content:flex-end;
+              align-items:center;
+              gap:6px;
+            "
+          >
+
+            <span
+              style="
+                font-size:12px;
+                font-weight:bold;
+              "
+            >
+              ${item.presences}
+            </span>
+
+            <div
+              style="
+                width:35px;
+                height:${height}px;
+                background:#4a6cf7;
+                border-radius:6px 6px 0 0;
+              "
+            ></div>
+
+            <span>
+              ${item.mois}
+            </span>
+
+          </div>
+        `;
+
+          }).join('');
+
+      }
+
+      catch (error) {
+
+        console.error(
+          'Erreur graphique :',
+          error
+        );
+
+      }
+    }
+    // Charger les rapports générés
+    // ------------------------------------------------------------
+
+    async function loadGeneratedReports() {
+
+      try {
+
+        const response =
+          await fetch(
+            'http://localhost:3001/api/admin/reports'
+          );
+
+        const data =
+          await response.json();
+
+        const tbody =
+          document.getElementById(
+            'reportsTableBody'
+          );
+
+        if (!tbody) return;
+
+        if (
+          !data.success ||
+          !data.reports ||
+          data.reports.length === 0
+        ) {
+
+          tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center;">
+            Aucun rapport généré.
+          </td>
+        </tr>
+      `;
+
+          return;
+        }
+
+        tbody.innerHTML =
+          data.reports.map(report => {
+
+            const dateGeneration =
+              new Date(
+                report.DateGeneration
+              ).toLocaleString('fr-FR');
+
+            const periode =
+              `${formatDate(report.DateDebut)}
+           - ${formatDate(report.DateFin)}`;
+
+            return `
+          <tr>
+
+            <td>
+              <strong>
+                ${report.NomRapport}
+              </strong>
+            </td>
+
+            <td>
+              ${report.Type}
+            </td>
+
+            <td>
+              ${periode}
+            </td>
+
+            <td>
+              ${dateGeneration}
+            </td>
+
+            <td>
+              <span
+                style="
+                  background:#d4edda;
+                  color:#155724;
+                  padding:4px 10px;
+                  border-radius:12px;
+                "
+              >
+                ${report.Statut}
+              </span>
+            </td>
+
+            <td>
+
+              <button
+                onclick="
+                  downloadReport(
+                    '${report.DateDebut}',
+                    '${report.DateFin}'
+                  )
+                "
+                style="
+                  border:none;
+                  background:none;
+                  cursor:pointer;
+                  font-size:18px;
+                "
+                title="Télécharger"
+              >
+                📥
+              </button>
+
+            </td>
+
+          </tr>
+        `;
+
+          }).join('');
+
+      }
+
+      catch (error) {
+
+        console.error(
+          'Erreur rapports :',
+          error
+        );
+
+      }
+    }
+    // Format date
+    // ------------------------------------------------------------
+
+    function formatDate(date) {
+
+      if (!date) return '';
+
+      const d =
+        new Date(date);
+
+      return d.toLocaleDateString(
+        'fr-FR'
+      );
+    }
+
+
+    // ------------------------------------------------------------
+    // Export PDF
+    // ------------------------------------------------------------
+
+    function exportReportsPDF() {
+
+      const dates =
+        getReportDates();
+
+      if (!dates) {
+
+        alert(
+          'Veuillez sélectionner les deux dates.'
+        );
+
+        return;
+      }
+
+      const url =
+        `http://localhost:3001/api/admin/export-pdf` +
+        `?dateDebut=${dates.dateDebut}` +
+        `&dateFin=${dates.dateFin}`;
+
+      window.open(
+        url,
+        '_blank'
+      );
+
+      // Actualiser la liste après génération
+      setTimeout(
+        loadGeneratedReports,
+        1500
+      );
+    }
+    // Télécharger un rapport existant
+    // ------------------------------------------------------------
+
+    function downloadReport(
+      dateDebut,
+      dateFin
+    ) {
+
+      const url =
+        `http://localhost:3001/api/admin/export-pdf` +
+        `?dateDebut=${dateDebut}` +
+        `&dateFin=${dateFin}`;
+
+      window.open(
+        url,
+        '_blank'
+      );
+    }
+
+
+    // ------------------------------------------------------------
+    // Initialisation de la page rapports
+    // ------------------------------------------------------------
+
+    function initReportsPage() {
+
+      const periodSelect =
+        document.getElementById(
+          'periodSelect'
+        );
+
+      if (!periodSelect) {
+        return;
+      }
+
+      periodSelect.addEventListener(
+        'change',
+        async function () {
+
+          const custom =
+            this.value === 'custom';
+
+          const debut =
+            document.getElementById(
+              'dateDebut'
+            );
+
+          const fin =
+            document.getElementById(
+              'dateFin'
+            );
+
+          if (debut) {
+            debut.style.display =
+              custom ? 'inline-block' : 'none';
+          }
+
+          if (fin) {
+            fin.style.display =
+              custom ? 'inline-block' : 'none';
+          }
+
+          await loadReportStatistics();
+
+        }
+      );
+
+      document
+        .getElementById('dateDebut')
+        ?.addEventListener(
+          'change',
+          loadReportStatistics
+        );
+
+      document
+        .getElementById('dateFin')
+        ?.addEventListener(
+          'change',
+          loadReportStatistics
+        );
+
+      loadReportStatistics();
+      loadMonthlyChart();
+      loadGeneratedReports();
+    }
+  </script>
+  <script>
+    const menuToggle = document.getElementById("menuToggle");
+    const sidebar = document.getElementById("sidebar");
+
+    menuToggle.addEventListener("click", function () {
+
+      sidebar.classList.toggle("open");
+
+      if (sidebar.classList.contains("open")) {
+        menuToggle.textContent = "✕";
+      } else {
+        menuToggle.textContent = "☰";
+      }
+
+    });
+  </script>
+</body>
+
+</html>

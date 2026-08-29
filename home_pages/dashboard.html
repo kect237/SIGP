@@ -1,0 +1,92 @@
+<div class="header">
+  <div class="header-right">
+    <div class="profile">
+      <span class="avatar" id="adminInitials">AD</span>
+      <div class="user-info">
+        <span class="user-name" id="adminName" >Administrateur</span> <br>
+        <span class="user-role">Administrateur</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+  <div>
+    <h1 class="title">Tableau de bord</h1>
+    <p class="subtitle">Vue d'ensemble de l'activité et des présences</p>
+  </div>
+  <button class="btn">+ Nouvelle session</button>
+</div>
+
+<!-- LES 4 CARDS -->
+<div class="cards">
+  <div class="card">
+    <div class="card-header">
+      <h4>Total Utilisateurs</h4>
+      <div class="card-icon" style="background:#e0e7ff;">👤</div>
+    </div>
+    <div class="value" id="stat-total-users">0</div>
+    
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h4>Présents Aujourd'hui</h4>
+      <div class="card-icon" style="background:#dcfce7;">✓</div>
+    </div>
+    <div id="stat-presents-today" class="value">0</div>
+    
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h4>Taux de Présence</h4>
+      <div class="card-icon" style="background:#ffedd5;">%</div>
+    </div>
+    <div id="stat-presence-rate"  class="value">0%</div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <h4>Sessions Actives</h4>
+      <div class="card-icon" style="background:#f3e8ff;">📊</div>
+    </div>
+    <div class="value" id="stat-active-sessions">0</div>
+    
+  </div>
+</div>
+
+<!-- LES 2 GRAPHIQUES - Utilise .graphs comme dans ton CSS -->
+<div class="graphs">
+  <div class="graph-box">
+    <div class="graph-title">Présence cette semaine</div>
+    <div style="height:200px; background:#f1f5f9; border:1px dashed #cbd5e1; border-radius: 8px;align-items: center; color: #94a3b8;"> Graphique ici</div>
+  </div>
+  <div class="graph-box">
+    <div class="graph-title">Tendances mensuelles</div>
+    <div style="height:200px; background:#f1f5f9;border:1px dashed #cbd5e1; border-radius: 8px;align-items: center; color: #94a3b8; "> Graphique ici</div>
+  </div>
+</div>
+
+<!-- LE TABLEAU - Utilise .table-box comme dans ton CSS -->
+<div class="table-box">
+  <div class="table-header">
+    <h3>Dernières Sessions</h3>
+    <a href="#" onclick="
+      loadPage('sessions.html', document.querySelector('a[onclick*=\'sessions.html\']'));
+      return false;
+      ">Voir tout →</a>
+  </div>
+  <table>
+    <thead> 
+    <tr>
+        <th>SESSION</th>
+        <th>HEURE</th>
+        <th>STATUT</th>
+        <th>ACTION</th>
+    </tr>
+    </thead>
+    <tbody id="recent-sessions-body"> 
+    </tbody>
+  </table>
+</div>

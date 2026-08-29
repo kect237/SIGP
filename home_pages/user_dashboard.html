@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ORGANISATION - Espace Utilisateur</title>
+  <link rel="stylesheet" href="/CSS/user_dashboard.css">
+
+  <!-- Bibliothèque de génération de QR Code -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Sécurité : Vérification de la session -->
+  <script>
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user'));
+
+    if (!token || !user) {
+      alert("Veuillez vous connecter pour accéder à cette page.");
+      window.location.href = "../index.html";
+    }
+  </script>
+</head>
+
+<body>
+  <div id="splash-screen">
+    <div class="splash-content">
+
+      <div class="shield">🛡️ <span>+</span> </div>
+
+      <h1>ORGANISATION</h1>
+
+      <p class="subtitle">
+        SYSTÈME INTELLIGENT DE GESTION DES PRÉSENCES
+      </p>
+
+      <div class="separator">
+        <span></span>
+        <b>🛡️</b>
+        <span></span>
+      </div>
+
+      <p class="qualities">
+        Sécurisé <strong>•</strong>
+        Fiable <strong>•</strong>
+        Performant
+      </p>
+
+      <p class="loading-text">CHARGEMENT EN COURS...</p>
+
+      <div class="progress-container">
+        <div id="progress-bar"></div>
+      </div>
+
+      <p id="progress-percent">0%</p>
+
+    </div>
+  </div>
+
+  <!-- Menu Gauche (Sidebar) -->
+  <aside class="sidebar">
+    <div class="brand">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z" />
+        <path d="M9 12L11 14L15 10" />
+      </svg>
+      ORGANISATION
+    </div>
+
+    <ul class="nav-list">
+      <li class="nav-item active" id="navMonEspace">
+        <a href="#" id="linkMonEspace">
+          📊 Mon Espace
+        </a>
+      </li>
+      <li class="nav-item" id="navMesPresences">
+        <a href="#" id="linkMesPresences">
+          📅 Mes Présences
+        </a>
+      </li>
+      <li class="nav-item">
+        <a href="#">
+          ⚙️ Mes Paramètres
+        </a>
+      </li> <br> <br> <br>
+      <button class="btn-logout" id="logoutBtn">Déconnexion</button>
+    </ul>
+  </aside>
+
+  <!-- Zone Principale -->
+  <main class="main-content">
+
+    <!-- En-tête (Toujours visible) -->
+    <header class="header">
+      <div class="page-title">
+        <h1 id="welcomeHeading">Tableau de bord</h1>
+        <p>Vue d'ensemble de votre compte et activité</p>
+      </div>
+
+      <div class="user-profile">
+        <div class="user-details">
+          <div class="name" id="userNameDisplay">Nom Prénom</div>
+          <div class="role" id="userRoleDisplay">Utilisateur</div>
+        </div>
+        <div class="avatar" id="userAvatar">U</div>
+
+      </div>
+    </header>
+
+    <!-- Section 1 : Mon Espace (Pass & Statuts) -->
+    <div id="sectionMonEspace">
+      <div class="qr-card">
+        <h3>Mon Pass Présence</h3>
+        <div id="qrcode" style="margin: 20px auto; display: inline-block;"></div>
+        <p id="userMatriculeText" style="font-weight: bold; color: #555;">Chargement du matricule...</p>
+      </div>
+
+      <!-- Grille des statistiques personnelles -->
+      <section class="grid-cards">
+        <!-- Carte Statut -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Statut du Compte</span>
+            <div class="icon-badge icon-green">✓</div>
+          </div>
+          <div class="card-value">
+            <span class="status-active">Compte Actif</span>
+          </div>
+          <div class="card-sub">Accès autorisé aux services</div>
+        </div>
+
+        <!-- Carte Email -->
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title">Adresse E-mail</span>
+            <div class="icon-badge icon-blue">✉</div>
+          </div>
+          <div class="card-value" id="userEmailDisplay" style="font-size: 1rem; word-break: break-all;">-</div>
+          <div class="card-sub">Identifiant de connexion</div>
+        </div>
+      </section>
+    </div>
+
+    <!-- Section 2 : Historique de Mes Présences (Masquée par défaut) -->
+    <div id="sectionPresences" class="content-section" style="display: none;">
+      <h2>Historique de Mes Présences</h2>
+      <div class="table-box">
+        <table class="table-presences">
+          <thead class="table-header">
+            <tr>
+              <th>Date</th>
+              <th>Heure</th>
+              <th>Statut</th>
+              <th>Source</th>
+            </tr>
+          </thead>
+          <tbody id="presencesTableBody">
+            <!-- Les lignes sont injectées dynamiquement -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const userData = localStorage.getItem('user');
+
+      if (userData) {
+        const user = JSON.parse(userData);
+
+        // 1. Remplir les données utilisateur
+        document.getElementById('userNameDisplay').textContent = user.nom;
+        document.getElementById('userRoleDisplay').textContent = user.role || 'Utilisateur';
+        document.getElementById('userEmailDisplay').textContent = user.email;
+        document.getElementById('welcomeHeading').textContent = `Bienvenue, ${user.nom}`;
+
+        // Initiales pour l'avatar
+        const initials = user.nom ? user.nom.split(' ').map(n => n[0]).join('').toUpperCase() : 'U';
+        document.getElementById('userAvatar').textContent = initials;
+
+        // 2. Générer le QR Code
+        const matricule = user.matricule || user.Matricule;
+        if (matricule) {
+          document.getElementById('userMatriculeText').textContent = `Matricule : ${matricule}`;
+
+          new QRCode(document.getElementById("qrcode"), {
+            text: JSON.stringify({
+              matricule: matricule,
+              nom: user.nom,
+              prenom: user.prenom
+            }),
+            width: 180,
+            height: 180,
+            colorDark: "#000000",
+            colorLight: "#ffffff",
+            correctLevel: QRCode.CorrectLevel.H
+          });
+        } else {
+          document.getElementById('userMatriculeText').textContent = "Matricule introuvable.";
+        }
+      } else {
+        window.location.href = '../index.html';
+      }
+    });
+
+    // Déconnexion
+    document.getElementById('logoutBtn').addEventListener('click', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = "../index.html";
+    });
+
+    // Navigation : Clic sur "Mes Présences"
+    document.getElementById('linkMesPresences').addEventListener('click', (e) => {
+      e.preventDefault();
+
+      document.getElementById('sectionMonEspace').style.display = 'none';
+      document.getElementById('sectionPresences').style.display = 'block';
+
+      document.getElementById('navMonEspace').classList.remove('active');
+      document.getElementById('navMesPresences').classList.add('active');
+
+      const userData = JSON.parse(localStorage.getItem('user'));
+      const matricule = userData ? (userData.matricule || userData.Matricule) : null;
+
+      if (matricule) {
+        chargerPresences(matricule);
+      } else {
+        document.getElementById('presencesTableBody').innerHTML = '<tr><td colspan="4">Matricule non trouvé.</td></tr>';
+      }
+    });
+
+    // Navigation : Clic sur "Mon Espace"
+    document.getElementById('linkMonEspace').addEventListener('click', (e) => {
+      e.preventDefault();
+
+      document.getElementById('sectionPresences').style.display = 'none';
+      document.getElementById('sectionMonEspace').style.display = 'block';
+
+      document.getElementById('navMesPresences').classList.remove('active');
+      document.getElementById('navMonEspace').classList.add('active');
+    });
+
+    // Fonction de récupération des données via l'API
+    async function chargerPresences(matricule) {
+      const tbody = document.getElementById('presencesTableBody');
+      tbody.innerHTML = '<tr><td colspan="4">Chargement...</td></tr>';
+
+      try {
+        const response = await fetch(`http://localhost:3001/api/presences/${matricule}`);
+        const presences = await response.json();
+
+        if (!presences || presences.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4">Aucune présence enregistrée.</td></tr>';
+          return;
+        }
+
+        tbody.innerHTML = presences.map(p => {
+          const dateObj = new Date(p.Timestamp);
+          const dateFormatted = dateObj.toLocaleDateString('fr-FR');
+          const timeFormatted = dateObj.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+          return `
+            <tr>
+              <td>${dateFormatted}</td>
+              <td>${timeFormatted}</td>
+              <td><span class="badge ${p.Statut ? p.Statut.toLowerCase() : ''}">${p.Statut || 'Présent'}</span></td>
+              <td>${p.SourceApp || 'Desktop'}</td>
+            </tr>
+          `;
+        }).join('');
+
+      } catch (error) {
+        console.error("Erreur lors du chargement :", error);
+        tbody.innerHTML = '<tr><td colspan="4">Erreur lors de la récupération du journal.</td></tr>';
+      }
+    }
+  </script>
+  <script>
+    document.addEventListener("DOMContentLoaded" ,
+    function(){ 
+
+   let progress = 0;
+
+    const progressBar = document.getElementById("progress-bar");
+    const progressPercent = document.getElementById("progress-percent");
+    const splash = document.getElementById("splash-screen");
+
+    const loading = setInterval(function(){
+
+        progress++;
+
+        progressBar.style.width = progress + "%";
+        progressPercent.textContent = progress + "%";
+
+        if (progress >= 100) {
+
+            clearInterval(loading);
+
+            setTimeout(function(){
+                splash.classList.add("hide");
+            }, 500);
+        }
+
+    }, 30);
+  });
+    </script>
+</body>
+
+</html>

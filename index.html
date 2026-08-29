@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Connexion - ORGANISATION</title>
+<link rel="stylesheet" href="/CSS/index.css">
+
+</head>
+<body>
+
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">
+       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+    <!-- 1. Le bouclier avec bordure blanche -->
+    <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z"/>
+    
+    <!-- 2. Le check ✅ blanc au milieu -->
+    <path d="M9 12L11 14L15 10" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  </svg>
+      </div>
+      <div class="logo-text">ORGANISATION</div>
+    </div>
+
+    <h1>Connexion</h1>
+    <p class="subtitle">Connectez-vous à votre compte pour continuer</p>
+
+    <form id="loginForm">
+      <div class="form-group">
+        <label>Adresse e-mail</label>
+        <div class="input-wrapper">
+          <svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+          <input type="email" id="email" placeholder="vous@exemple.com" required>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Mot de passe</label>
+        <div class="password-wrapper">
+          <input type="password" id="password" placeholder="••••••" required>
+          <svg class="toggle-password" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+        </div>
+      </div>
+
+      <div class="options">
+        <label class="checkbox">
+          <input type="checkbox" checked>
+          Se souvenir de moi
+        </label>
+        <a href="/pages/reset-password.html" class="forgot">Mot de passe oublié ?</a>
+      </div>
+
+      <button type="submit" class="btn">Se connecter</button>
+
+      <div class="divider"><span>ou</span></div>
+
+      <p class="signup">
+        Vous n'avez pas de compte ? <a href="/pages/register.html">Créer un compte</a>
+      </p>
+    </form>
+
+    <footer>
+      © 2026 ORGANISATION · <a href="#">Confidentialité</a> · <a href="#">Conditions</a> · <a href="#">Aide</a>
+    </footer>
+  </div>
+
+
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+
+  const email = document.getElementById('email').value;
+  const mot_de_passe = document.getElementById('password').value;
+
+  try {
+    const response = await fetch('http://localhost:3001/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, mot_de_passe: mot_de_passe })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      // Stockage de la session dans le navigateur
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+      
+
+      alert("Bienvenue " + data.user.nom + " !");
+
+      // 🔀 REDIRECTION SELON LE RÔLE
+      if (data.user.role === 'ADMIN') {
+        window.location.href = "./home_pages/admin_dashboard.html"; // Page Tableau de bord Admin
+      } else {
+        window.location.href = "./home_pages/user_dashboard.html";  // Page Tableau de bord Utilisateur
+      }
+
+    } else {
+      alert(data.message || "Email ou mot de passe incorrect");
+    }
+  } catch (err) {
+    console.error("Erreur Connexion :", err);
+    alert("Impossible de contacter le serveur.");
+  }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>SGIP - Inscription</title>
+    <link rel="stylesheet" href="/CSS/register.css">
+    
+</head>
+<body>
+    <div class="card">
+        <div class="logo">
+            <div class="logo-icon">
+       <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+    <!-- 1. Le bouclier avec bordure blanche -->
+    <path d="M12 1L3 5V11C3 16.55 6.84 21.74 12 23C17.16 21.74 21 16.55 21 11V5L12 1Z"/>
+    
+    <!-- 2. Le check ✅ blanc au milieu -->
+    <path d="M9 12L11 14L15 10" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  </svg>
+      </div>
+      <div class="logo-text">ORGANISATION</div>
+    </div>
+
+       
+        <h1>Inscription</h1>
+        <p class="subtitle">Créez votre compte pour continuer</p>       
+
+        <form method="POST" id="registerForm">
+            <label>Nom complet</label>
+            <input type="text" id="nom" name="nom_complet" placeholder="Entrez votre nom complet" required>
+
+            <label>Adresse e-mail</label>
+            <input type="email" id="email" name="email" placeholder="exemple@email.com" required>
+
+            <label>Mot de passe</label>
+            <input type="password" id="password" name="password" placeholder="••••" required>
+
+            <label>Confirmer le mot de passe</label>
+            <input type="password" id="confirm_password" name="confirm_password" placeholder="••••" required>
+
+            <div class="options">
+                <label><input type="checkbox" name="conditions" required> J'accepte les conditions</label>
+            </div>
+
+            <button type="submit"><a href="/index.html">S'inscrire</a></button>
+            <p class="login-link">Vous avez déjà un compte ? <a href="/index.html">Se connecter</a></p>
+        </form>
+
+         <footer>
+      © 2026 ORGANISATION · <a href="#">Confidentialité</a> · <a href="#">Conditions</a> · <a href="#">Aide</a></footer>
+    </div>
+
+    <script>
+document.getElementById('registerForm').addEventListener('submit', async (e) => {
+  e.preventDefault(); // Empêche le rechargement de la page
+
+  const nom = document.getElementById('nom').value.trim();
+  const email = document.getElementById('email').value.trim();
+  const mot_de_passe = document.getElementById('password').value;
+  const confirm_password = document.getElementById('confirm_password') 
+    ? document.getElementById('confirm_password').value 
+    : '';
+
+  // 1. Vérification que les champs ne sont pas vides
+  if (!nom || !email || !mot_de_passe) {
+    alert("Veuillez remplir tous les champs du formulaire !");
+    return;
+  }
+
+  // 2. Vérification de la correspondance des mots de passe
+  if (confirm_password && mot_de_passe !== confirm_password) {
+    alert("Les mots de passe ne correspondent pas !");
+    return;
+  }
+
+  // 3. Envoi au serveur si tout est valide
+  try {
+    const response = await fetch('http://localhost:3001/api/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nom, email, mot_de_passe })
+    });
+
+    const data = await response.json();
+
+    if (data.success) {
+      alert("Compte créé avec succès ! Redirection vers la connexion...");
+      window.location.href = "../index.html"; // Ajustez le chemin vers votre page de login si nécessaire
+    } else {
+      alert(data.message || "Erreur lors de l'inscription.");
+    }
+  } catch (err) {
+    console.error("Erreur Inscription :", err);
+    alert("Impossible de contacter le serveur.");
+  }
+});
+</script>
+</body>
+</html>

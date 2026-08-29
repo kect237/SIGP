@@ -1,0 +1,44 @@
+<div class="page-header">
+  <h1 class="title">Utilisateurs</h1>
+  <div class="header-actions">
+    <button class="btn btn-ajouter" onclick="openAddUserModal()">+ Ajouter</button>
+    <button class="btn btn-outline" >⬆ Importer Excel</button>
+   
+  </div>
+</div>
+
+<!-- BARRE DE RECHERCHE + FILTRES -->
+<div class="toolbar">
+  <div class="search-box">
+    <span>🔍</span>
+    <input type="text" id="user-search-input" placeholder="Rechercher un utilisateur..." oninput="filterUsers()">
+  </div>
+  <select class="filter-select" id="user-status-filter" onchange="filterUsers();">
+    <option>Statut : Tous</option>
+    <option>Actif</option>
+    <option>Inactif</option>
+  </select>
+  <button class="btn btn-outline">▤ Filtres</button>
+</div>
+
+<!-- TABLEAU UTILISATEURS -->
+<div class="table-box">
+  <table class="user-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Photo</th>
+        <th>Nom</th>
+        <th>Prénom</th>
+        <th>Email</th>
+        <th>Statut</th>
+        <th>Dernière présence</th>
+        <th>Actions</th>
+      </tr>
+    </thead>
+    <tbody id="users-table-body">
+      
+    </tbody>
+  </table>
+  </div>
+</div>

@@ -1,0 +1,31 @@
+
+
+  <div class="container">
+  <div class="top">
+    <div><h2>Tableau de présence</h2><p id="date-label"></p></div>
+    <div class="stats">
+      <div class="card present"><h4>Présents</h4><div class="num" id="present-count">0/0</div></div>
+      <div class="card absent"><h4>Absents</h4><div class="num" id="absent-count">0/0</div></div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="tabs">
+      <button onclick="appliquerFiltre('tous')">Tous</button>
+      <button onclick="appliquerFiltre('presents')">Présents</button>
+      <button onclick="appliquerFiltre('absents')">Absents</button>
+    </div>
+    <input id="presence-search" type="text"  placeholder="Rechercher..." style="padding:10px 14px;border:1px solid #cbd5e1;border-radius:10px;margin-bottom:14px;width:280px">
+    <table>
+        <thead>
+            <tr>
+                <th>Photo</th>
+                <th>Matricule</th>
+                <th>Nom</th>
+                <th>Heure</th>
+                <th>Statut</th>
+            </tr>
+        </thead>
+        <tbody id="presence-table-body"></tbody>
+    </table>
+  </div>
+</div>
