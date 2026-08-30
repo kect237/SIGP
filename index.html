@@ -93,7 +93,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
       alert("Bienvenue " + data.user.nom + " !");
 
       // 🔀 REDIRECTION SELON LE RÔLE
-      if (data.user.role === 'ADMIN') {
+      if (data.user.role === 'Admin') {
         window.location.href = "./home_pages/admin_dashboard.html"; // Page Tableau de bord Admin
       } else {
         window.location.href = "./home_pages/user_dashboard.html";  // Page Tableau de bord Utilisateur

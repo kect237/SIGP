@@ -39,11 +39,13 @@ function requireAdmin(req, res, next) {
 
 
 const dbConfig = {
-  user: 'sa',
-  password: 'Admin1234',
-  server: 'localhost\\SQLEXPRESS',
-  database: 'PresenceDB',
-  options: { encrypt: false, trustServerCertificate: true }
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  server: process.env.DB_SERVER,
+  database: process.env.DB_NAME,
+  options: { 
+    instanceName: process.env.DB_INSTANCE,
+    encrypt: false, trustServerCertificate: true }
 };
 
 const poolPromise = new sql.ConnectionPool(dbConfig)
@@ -256,6 +258,25 @@ app.get('/api/sessions/recent', async (req, res) => {
 });
 
 // Route : Enregistrer une présence via le scan d'un QR code
+// Route : Consulter la session actuellement active (utilisée par la page de scan)
+app.get('/api/sessions/active', async (req, res) => {
+  try {
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request().query(`
+      SELECT TOP 1 Id, Titre FROM Sessions WHERE EstActive = 1 ORDER BY DateCreation DESC
+    `);
+
+    if (result.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Aucune session active.' });
+    }
+
+    res.json({ success: true, id: result.recordset[0].Id, titre: result.recordset[0].Titre });
+  } catch (err) {
+    console.error("❌ Erreur session active :", err.message);
+    res.status(500).json({ success: false, message: 'Erreur serveur.' });
+  }
+});
+// Route : Enregistrer une présence via le scan d'un QR code
 app.post('/api/presences/scan', async (req, res) => {
   const { matricule } = req.body;
 
@@ -298,13 +319,15 @@ app.post('/api/presences/scan', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Présence déjà enregistrée pour cette session.' });
     }
 
-    // 4. Enregistrer la présence
+   // 4. Enregistrer la présence
     await pool.request()
       .input('sessionId', sql.Int, sessionId)
-      .input('userId', sql.NVarChar, user.Id)
+      .input('userId', sql.UniqueIdentifier, user.Id)
+      .input('matricule', sql.NVarChar(50), matricule)
+      .input('statut', sql.NVarChar(20), 'PRESENT')
       .query(`
-        INSERT INTO Presences (SessionId, UserId, DateHeureScan, Statut)
-        VALUES (@sessionId, @userId, GETDATE(), 'PRESENT')
+        INSERT INTO Presences (Id, SessionId, UserId, Matricule, Timestamp, Statut, SourceApp, Synchro, DateSync)
+        VALUES (NEWID(), @sessionId, @userId, @matricule, GETDATE(), @statut, 'Scan', 1, SYSDATETIME())
       `);
 
     res.json({
@@ -317,7 +340,71 @@ app.post('/api/presences/scan', async (req, res) => {
     res.status(500).json({ success: false, message: 'Erreur lors de l\'enregistrement.' });
   }
 });
+// Route pour les presences avec un check in
+app.post('/api/presences/checkin', async (req, res) => {
+  const { sessionId, matricule } = req.body;
 
+  if (!sessionId || !matricule) {
+    return res.status(400).json({ success: false, message: 'sessionId et matricule sont requis.' });
+  }
+
+  try {
+    const pool = await sql.connect(dbConfig);
+
+    // 1. Vérifier que la session existe et est active
+    const sessionResult = await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .query(`SELECT Id, Titre, EstActive FROM Sessions WHERE Id = @sessionId`);
+
+    if (sessionResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Session introuvable.' });
+    }
+    if (sessionResult.recordset[0].EstActive !== true) {
+      return res.status(400).json({ success: false, message: 'Cette session n\'est plus active.' });
+    }
+
+    // 2. Vérifier que l'utilisateur existe
+    const userResult = await pool.request()
+      .input('matricule', sql.NVarChar(50), matricule)
+      .query(`SELECT Id, Nom, Prenom FROM Utilisateurs WHERE Matricule = @matricule`);
+
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({ success: false, message: 'Matricule inconnu.' });
+    }
+
+    const user = userResult.recordset[0];
+
+    // 3. Empêcher les doublons pour la même session
+    const existingPresence = await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .input('userId', sql.UniqueIdentifier, user.Id)
+      .query(`SELECT Id FROM Presences WHERE SessionId = @sessionId AND UserId = @userId`);
+
+    if (existingPresence.recordset.length > 0) {
+      return res.status(400).json({ success: false, message: 'Présence déjà enregistrée pour cette session.' });
+    }
+
+    // 4. Enregistrer la présence
+    await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .input('userId', sql.UniqueIdentifier, user.Id)
+      .input('matricule', sql.NVarChar(50), matricule)
+      .input('statut', sql.NVarChar(20), 'PRESENT')
+      .query(`
+        INSERT INTO Presences (Id, SessionId, UserId, Matricule, Timestamp, Statut, SourceApp, Synchro, DateSync)
+        VALUES (NEWID(), @sessionId, @userId, @matricule, GETDATE(), @statut, 'Checkin', 1, SYSDATETIME())
+      `);
+
+    res.json({
+      success: true,
+      message: `Présence enregistrée pour ${user.Prenom || ''} ${user.Nom || matricule}`
+    });
+
+  } catch (err) {
+    console.error("❌ Erreur checkin présence :", err.message);
+    res.status(500).json({ success: false, message: 'Erreur lors de l\'enregistrement.' });
+  }
+});
 // Route ADMIN UNIQUEMENT : générer/ressortir le badge QR de n'importe quel utilisateur
 app.get('/api/admin/badges/:matricule', verifyToken, requireAdmin, async (req, res) => {
   const { matricule } = req.params;
@@ -470,6 +557,26 @@ app.get('/api/admin/statistics', async (req, res) => {
       `);
 
     const totalUsers = usersResult.recordset[0].totalUsers || 0;
+    // Présents aujourd'hui
+const presentsTodayResult = await pool.request().query(`
+  SELECT COUNT(DISTINCT UserId) AS presentsToday
+  FROM Presences
+  WHERE CAST([Timestamp] AS DATE) = CAST(GETDATE() AS DATE)
+`);
+
+const presentsToday =
+  presentsTodayResult.recordset[0].presentsToday || 0;
+
+
+// Sessions actuellement actives
+const activeSessionsResult = await pool.request().query(`
+  SELECT COUNT(*) AS activeSessions
+  FROM Sessions
+  WHERE EstActive = 1
+`);
+
+const activeSessions =
+  activeSessionsResult.recordset[0].activeSessions || 0;
 
     // Nombre de sessions pendant la période
     const sessionsResult = await pool.request()
@@ -549,7 +656,9 @@ app.get('/api/admin/statistics', async (req, res) => {
         usersPresent,
         totalRetards,
         absences,
-        presenceRate
+        presenceRate,
+        presentsToday,
+        activeSessions
       }
     });
 

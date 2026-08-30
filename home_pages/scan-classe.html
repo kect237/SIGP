@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scan Présence — Mode Classe</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<style>
+  :root{
+    --ink:#0d1117;
+    --panel:#151b23;
+    --line:#2a323d;
+    --text:#e6edf3;
+    --dim:#8b98a5;
+    --ok:#3fb950;
+    --err:#f85149;
+    --wait:#58a6ff;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%;
+    background:var(--ink); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  }
+  .frame{
+    max-width:480px; margin:0 auto; min-height:100dvh;
+    display:flex; flex-direction:column;
+  }
+  header{
+    padding:18px 20px 14px;
+    border-bottom:1px solid var(--line);
+  }
+  .eyebrow{
+    font-family:"SFMono-Regular",Consolas,monospace;
+    font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--dim);
+  }
+  h1{
+    margin:4px 0 0; font-size:20px; font-weight:600;
+  }
+  #session-banner{
+    margin-top:10px; font-size:13px; color:var(--dim);
+    font-family:"SFMono-Regular",Consolas,monospace;
+  }
+  #session-banner.active{ color:var(--ok); }
+  #session-banner.inactive{ color:var(--err); }
+
+  .reader-wrap{
+    position:relative; margin:16px 20px 0;
+    border-radius:16px; overflow:hidden;
+    border:1px solid var(--line);
+    background:#000;
+  }
+  #reader{ width:100%; }
+  #reader video{ width:100% !important; border-radius:16px; }
+
+  .status-bar{
+    margin:14px 20px; padding:16px 18px;
+    border-radius:12px;
+    background:var(--panel);
+    border:1px solid var(--line);
+    min-height:64px;
+    display:flex; align-items:center; gap:12px;
+    transition:background .15s ease, border-color .15s ease;
+  }
+  .status-bar .dot{
+    width:10px; height:10px; border-radius:50%;
+    background:var(--wait); flex:0 0 auto;
+  }
+  .status-bar.ok{ background:rgba(63,185,80,.12); border-color:var(--ok); }
+  .status-bar.ok .dot{ background:var(--ok); }
+  .status-bar.err{ background:rgba(248,81,73,.12); border-color:var(--err); }
+  .status-bar.err .dot{ background:var(--err); }
+
+  .status-text .name{
+    font-weight:600; font-size:15px; line-height:1.3;
+  }
+  .status-text .sub{
+    font-size:12.5px; color:var(--dim);
+    font-family:"SFMono-Regular",Consolas,monospace;
+    margin-top:2px;
+  }
+
+  .log{
+    margin:0 20px 20px; flex:1;
+    overflow-y:auto;
+  }
+  .log-title{
+    font-size:11px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--dim); margin:4px 0 10px;
+  }
+  .log-item{
+    display:flex; justify-content:space-between; gap:10px;
+    padding:9px 0; border-bottom:1px solid var(--line);
+    font-size:13.5px;
+  }
+  .log-item .who{ font-weight:500; }
+  .log-item .when{
+    color:var(--dim); font-family:"SFMono-Regular",Consolas,monospace;
+    font-size:12px; white-space:nowrap;
+  }
+  .log-item.err .who{ color:var(--err); }
+</style>
+</head>
+<body>
+<div class="frame">
+  <header>
+    <div class="eyebrow">Système de présences</div>
+    <h1>Scan — Mode classe</h1>
+  </header>
+
+  <div class="status-bar" id="sessionPicker" style="margin:16px 20px;">
+    <div class="status-text" style="width:100%;">
+      <div class="name" style="margin-bottom:10px;">Choisis la session avant de scanner</div>
+      <select id="sessionSelect" style="width:100%; padding:10px; border-radius:8px; background:var(--panel); color:var(--text); border:1px solid var(--line); font-size:14px;">
+        <option value="">Chargement des sessions...</option>
+      </select>
+      <button id="startScanBtn" disabled style="width:100%; margin-top:10px; padding:12px; border-radius:8px; border:none; background:var(--wait); color:#fff; font-weight:600; font-size:14px;">
+        Démarrer le scan
+      </button>
+    </div>
+  </div>
+
+  <div class="reader-wrap" id="readerWrap" style="display:none;">
+    <div id="reader"></div>
+  </div>
+
+  <div class="status-bar" id="statusBar">
+    <div class="dot"></div>
+    <div class="status-text">
+      <div class="name" id="statusMain">En attente d'un badge…</div>
+      <div class="sub" id="statusSub">Présente le QR code devant la caméra</div>
+    </div>
+  </div>
+
+  <div class="log">
+    <div class="log-title">Dernières présences enregistrées</div>
+    <div id="logList"></div>
+  </div>
+</div>
+
+<script>
+  // === Configuration : adapte ce port à celui de ton server.js ===
+  const API_BASE = 'http://localhost:3001';
+
+  const statusBar = document.getElementById('statusBar');
+  const statusMain = document.getElementById('statusMain');
+  const statusSub = document.getElementById('statusSub');
+  const logList = document.getElementById('logList');
+  const sessionSelect = document.getElementById('sessionSelect');
+  const startScanBtn = document.getElementById('startScanBtn');
+  const readerWrap = document.getElementById('readerWrap');
+
+  let isProcessing = false;
+  let sessionIdChoisie = null;
+  let html5QrCode = null;
+
+  function setStatus(mode, main, sub) {
+    statusBar.className = 'status-bar' + (mode ? ' ' + mode : '');
+    statusMain.textContent = main;
+    statusSub.textContent = sub;
+  }
+
+  function addLogEntry(label, ok) {
+    const item = document.createElement('div');
+    item.className = 'log-item' + (ok ? '' : ' err');
+    const time = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    item.innerHTML = `<span class="who">${label}</span><span class="when">${time}</span>`;
+    logList.prepend(item);
+  }
+
+  // Charge uniquement les sessions actives : impossible de scanner sur une session fermée
+  async function chargerSessions() {
+    try {
+      const res = await fetch(`${API_BASE}/api/sessions/recent`);
+      const data = await res.json();
+
+      const sessionsActives = (data.sessions || []).filter(s => s.EstActive);
+
+      if (sessionsActives.length === 0) {
+        sessionSelect.innerHTML = '<option value="">Aucune session active</option>';
+        return;
+      }
+
+      sessionSelect.innerHTML = '<option value="">-- Choisir une session --</option>' +
+        sessionsActives.map(s => `<option value="${s.Id}">${s.Titre}</option>`).join('');
+    } catch (e) {
+      sessionSelect.innerHTML = '<option value="">Serveur injoignable</option>';
+    }
+  }
+  chargerSessions();
+
+  sessionSelect.addEventListener('change', () => {
+    startScanBtn.disabled = !sessionSelect.value;
+  });
+
+  startScanBtn.addEventListener('click', () => {
+    sessionIdChoisie = sessionSelect.value;
+    if (!sessionIdChoisie) return;
+
+    sessionSelect.disabled = true;
+    startScanBtn.disabled = true;
+    startScanBtn.textContent = `Session verrouillée : ${sessionSelect.options[sessionSelect.selectedIndex].text}`;
+    readerWrap.style.display = 'block';
+
+    demarrerCamera();
+  });
+
+  async function onScanSuccess(decodedText) {
+    if (isProcessing) return; // évite les doublons pendant qu'une requête est en cours
+    isProcessing = true;
+
+    let infos;
+    try {
+      infos = JSON.parse(decodedText);
+    } catch (e) {
+      setStatus('err', 'QR code illisible', 'Ce badge ne contient pas les données attendues');
+      isProcessing = false;
+      return;
+    }
+
+    if (!infos.matricule) {
+      setStatus('err', 'QR code invalide', 'Aucun matricule trouvé dans ce badge');
+      isProcessing = false;
+      return;
+    }
+
+    setStatus(null, `${infos.prenom || ''} ${infos.nom || infos.matricule}`, 'Enregistrement en cours…');
+
+    try {
+      const res = await fetch(`${API_BASE}/api/presences/checkin`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId: sessionIdChoisie, matricule: infos.matricule })
+      });
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setStatus('ok', `${infos.prenom || ''} ${infos.nom || ''}`.trim() || infos.matricule, 'Présence enregistrée ✓');
+        addLogEntry(`${infos.prenom || ''} ${infos.nom || infos.matricule}`.trim(), true);
+      } else {
+        setStatus('err', 'Échec de l\'enregistrement', data.message || 'Erreur inconnue');
+        addLogEntry(`${infos.matricule} — échec`, false);
+      }
+    } catch (e) {
+      setStatus('err', 'Serveur injoignable', 'Vérifie que server.js tourne bien');
+    }
+
+    // Petite pause avant de pouvoir re-scanner (laisse le temps de retirer le badge)
+    setTimeout(() => {
+      isProcessing = false;
+      setStatus(null, 'En attente d\'un badge…', 'Présente le QR code devant la caméra');
+    }, 2000);
+  }
+
+  function onScanFailure() {
+    // Appelé en continu tant qu'aucun QR n'est détecté — on ignore volontairement.
+  }
+
+  function demarrerCamera() {
+    html5QrCode = new Html5Qrcode('reader');
+    html5QrCode.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 240, height: 240 } },
+      onScanSuccess,
+      onScanFailure
+    ).catch(err => {
+      setStatus('err', 'Caméra inaccessible', 'Autorise la caméra, ou vérifie que la page est en HTTPS/localhost');
+    });
+  }
+</script>
+</body>
+</html>
