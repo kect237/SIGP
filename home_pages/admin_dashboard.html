@@ -277,14 +277,22 @@
 
         // Charger la page dans le contenu principal
         document.getElementById('content').innerHTML = data;
+        
 
+        document.getElementById('content').innerHTML = data;
+
+   // Initialisation de la page Rapports
+       if (page === 'reports.html') {
+       loadReportStatistics();
+        loadMonthlyChart();
+        loadReports();
+}
 
         // ================================
         // MENU ACTIF
         // ================================
 
-        document
-            .querySelectorAll('.menu-item')
+        document.querySelectorAll('.menu-item')
             .forEach(item => {
                 item.classList.remove('active');
             });
@@ -998,6 +1006,11 @@
             <td>
                 ${heure}
             </td>
+            <td>
+                ${personne.Session || "--"}
+            </td>
+            
+            
 
             <td>
 
@@ -1326,8 +1339,10 @@
     }
     // Charger les statistiques 
 
-    async function loadReportStatistics() {
-
+    async function loadReportStatistics() 
+   
+{
+      
       const dates = getReportDates();
 
       if (!dates) {
@@ -1374,11 +1389,12 @@
       }
 
       catch (error) {
-
+        console.log ("Fonction disponible");
         console.error(
           'Erreur statistiques :',
           error
         );
+        
 
       }
     }
@@ -1741,6 +1757,98 @@
       loadMonthlyChart();
       loadGeneratedReports();
     }
+    async function loadReports() {
+  try {
+    const response = await fetch(
+      'http://localhost:3001/api/admin/reports'
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message || 'Erreur récupération rapports');
+    }
+
+    const tbody = document.getElementById('reportsTableBody');
+
+    if (!tbody) {
+      console.error('❌ reportsTableBody introuvable');
+      return;
+    }
+
+    // Aucun rapport
+    if (!data.reports || data.reports.length === 0) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center;">
+            Aucun rapport généré
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    // Afficher les rapports
+    tbody.innerHTML = data.reports.map(report => `
+      <tr>
+        <td>${report.NomRapport || '-'}</td>
+
+        <td>${report.Type || '-'}</td>
+
+        <td>
+          ${report.DateDebut
+            ? new Date(report.DateDebut).toLocaleDateString('fr-FR')
+            : '-'}
+          au
+          ${report.DateFin
+            ? new Date(report.DateFin).toLocaleDateString('fr-FR')
+            : '-'}
+        </td>
+
+        <td>
+          ${report.DateGeneration
+            ? new Date(report.DateGeneration).toLocaleString('fr-FR')
+            : '-'}
+        </td>
+
+        <td>
+          ${report.Statut || '-'}
+        </td>
+
+        <td>
+          <button
+            class="btn btn-outline"
+            onclick="exportReportsPDF(
+              '${report.DateDebut?.slice(0, 10) || ''}',
+              '${report.DateFin?.slice(0, 10) || ''}'
+            )"
+          >
+            📥 PDF
+          </button>
+        </td>
+      </tr>
+    `).join('');
+
+    console.log(
+      `✅ ${data.reports.length} rapport(s) chargé(s)`
+    );
+
+  } catch (error) {
+    console.error('❌ Erreur chargement rapports :', error);
+
+    const tbody = document.getElementById('reportsTableBody');
+
+    if (tbody) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="6" style="text-align:center;">
+            Erreur lors du chargement des rapports
+          </td>
+        </tr>
+      `;
+    }
+  }
+}
   </script>
   <script>
     const menuToggle = document.getElementById("menuToggle");

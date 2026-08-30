@@ -439,28 +439,29 @@ app.get('/api/admin/badges/:matricule', verifyToken, requireAdmin, async (req, r
 app.get('/api/admin/presences/today', async (req, res) => {
   try {
     const pool = await sql.connect(dbConfig);
-    const result = await pool.request().query(`
-      SELECT u.Id, u.Matricule, u.Nom, u.Prenom, p.Timestamp
-      FROM Utilisateurs u
-      OUTER APPLY (
-        SELECT TOP 1 Timestamp
-        FROM Presences
-        WHERE Presences.UserId = u.Id
-          AND CAST(Timestamp AS DATE) = CAST(GETDATE() AS DATE)
-        ORDER BY Timestamp DESC
-      ) p
-      WHERE u.Role IS NULL OR u.Role != 'Admin'
-      ORDER BY u.Nom, u.Prenom
-    `);
+   const result = await pool.request().query(`
+  SELECT u.Id, u.Matricule, u.Nom, u.Prenom, p.Timestamp, s.Titre AS SessionTitre
+  FROM Utilisateurs u
+  OUTER APPLY (
+    SELECT TOP 1 Timestamp, SessionId
+    FROM Presences
+    WHERE Presences.UserId = u.Id
+      AND CAST(Timestamp AS DATE) = CAST(GETDATE() AS DATE)
+    ORDER BY Timestamp DESC
+  ) p
+  LEFT JOIN Sessions s ON s.Id = p.SessionId
+  WHERE u.Role IS NULL OR u.Role != 'Admin'
+  ORDER BY u.Nom, u.Prenom
+`);
 
-    const utilisateurs = result.recordset.map(row => ({
-      Matricule: row.Matricule,
-      Nom: row.Nom,
-      Prenom: row.Prenom,
-      Timestamp: row.Timestamp,
-      Statut: row.Timestamp ? 'Présent' : 'Absent'
-    }));
-
+const utilisateurs = result.recordset.map(row => ({
+  Matricule: row.Matricule,
+  Nom: row.Nom,
+  Prenom: row.Prenom,
+  Timestamp: row.Timestamp,
+  Statut: row.Timestamp ? 'Présent' : 'Absent',
+  Session: row.SessionTitre || null
+}));
     const total = utilisateurs.length;
     const presents = utilisateurs.filter(u => u.Statut === 'Présent').length;
 
