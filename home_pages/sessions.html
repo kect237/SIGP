@@ -1,71 +1,121 @@
 <div class="page-header">
   <h1 class="title">Gestion des Sessions</h1>
+
   <div class="header-actions">
-    <button class="btn btn-green">+ Nouvelle session</button>
-    <button class="btn btn-outline">📥 Exporter</button>
+    <button class="btn btn-green" onclick="">
+      + Nouvelle session
+    </button>
+
+    <button class="btn btn-outline" onclick="chargerSessions()">
+      🔄 Actualiser
+    </button>
   </div>
 </div>
 
+
+<!-- ========================= -->
 <!-- STATS CARDS -->
+<!-- ========================= -->
+
 <div class="cards">
+
   <div class="card">
     <div class="card-header">
       <h4>Sessions Actives</h4>
       <div class="card-icon" style="background:#dcfce7;">▶</div>
     </div>
-    <div class="value">0</div>
-   
+
+    <div class="value" id="sessions-actives">
+      0
+    </div>
   </div>
+
 
   <div class="card">
     <div class="card-header">
       <h4>Sessions Aujourd'hui</h4>
       <div class="card-icon" style="background:#e0e7ff;">📅</div>
     </div>
-    <div class="value">0</div>
 
+    <div class="value" id="sessions-aujourd-hui">
+      0
+    </div>
   </div>
+
 
   <div class="card">
     <div class="card-header">
       <h4>Présence Moyenne</h4>
       <div class="card-icon" style="background:#ffedd5;">%</div>
     </div>
-    <div class="value">0%</div>
-  
+
+    <div class="value" id="presence-moyenne">
+      0%
+    </div>
   </div>
+
 
   <div class="card">
     <div class="card-header">
       <h4>Total Participants</h4>
       <div class="card-icon" style="background:#f3e8ff;">👥</div>
     </div>
-    <div class="value">0</div>
+
+    <div class="value" id="total-participants">
+      0
+    </div>
   </div>
+
 </div>
 
+
+<!-- ========================= -->
 <!-- FILTRES -->
+<!-- ========================= -->
+
 <div class="toolbar">
+
   <div class="search-box">
     <span>🔍</span>
-    <input type="text" placeholder="Recher une session...">
+
+    <input
+      type="text"
+      id="sessionSearch"
+      placeholder="Rechercher une session..."
+    >
   </div>
-  <select class="filter-select">
-    <option>Statut : Tous</option>
-    <option>En cours</option>
-    <option>Terminée</option>
-    <option>Programmée</option>
+
+
+  <select
+    class="filter-select"
+    id="sessionStatusFilter"
+  >
+    <option value="all">Statut : Tous</option>
+    <option value="active">En cours</option>
+    <option value="closed">Terminée</option>
   </select>
-  <select class="filter-select">
-    <option>Date : Ce mois</option>
-    <option>Aujourd'hui</option>
-    <option>Cette semaine</option>
+
+
+  <select
+    class="filter-select"
+    id="sessionDateFilter"
+  >
+    <option value="month">Date : Ce mois</option>
+    <option value="today">Aujourd'hui</option>
+    <option value="week">Cette semaine</option>
   </select>
+
 </div>
 
+
+<!-- ========================= -->
 <!-- TABLEAU SESSIONS -->
+<!-- ========================= -->
+
 <div class="table-box">
+
   <table class="user-table">
+
     <thead>
       <tr>
         <th>ID SESSION</th>
@@ -77,10 +127,17 @@
         <th>ACTIONS</th>
       </tr>
     </thead>
-    <tbody>
-      
+
+    <tbody id="sessionsTableBody">
+
+      <tr>
+        <td colspan="7" style="text-align:center;">
+          Chargement...
+        </td>
+      </tr>
+
     </tbody>
+
   </table>
 
-  </div>
 </div>

@@ -43,9 +43,10 @@ const dbConfig = {
   password: process.env.DB_PASSWORD,
   server: process.env.DB_SERVER,
   database: process.env.DB_NAME,
-  options: { 
+  options: {
     instanceName: process.env.DB_INSTANCE,
-    encrypt: false, trustServerCertificate: true }
+    encrypt: false, trustServerCertificate: true
+  }
 };
 
 const poolPromise = new sql.ConnectionPool(dbConfig)
@@ -281,63 +282,180 @@ app.post('/api/presences/scan', async (req, res) => {
   const { matricule } = req.body;
 
   if (!matricule) {
-    return res.status(400).json({ success: false, message: 'Matricule requis.' });
+    return res.status(400).json({
+      success: false,
+      message: 'Matricule requis.'
+    });
   }
 
   try {
     const pool = await sql.connect(dbConfig);
 
-    // 1. Récupérer la session actuellement active
+    // =====================================================
+    // 1. Récupérer la session active la plus récente
+    // =====================================================
+
     const activeSession = await pool.request().query(`
-      SELECT TOP 1 Id, Titre FROM Sessions WHERE EstActive = 1 ORDER BY DateCreation DESC
+      SELECT TOP 1
+        Id,
+        Titre
+      FROM Sessions
+      WHERE EstActive = 1
+      ORDER BY DateCreation DESC
     `);
 
     if (activeSession.recordset.length === 0) {
-      return res.status(400).json({ success: false, message: 'Aucune session active en cours.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Aucune session active en cours.'
+      });
     }
 
     const sessionId = activeSession.recordset[0].Id;
+    const sessionTitre = activeSession.recordset[0].Titre;
 
-    // 2. Vérifier si l'utilisateur existe
+    // =====================================================
+    // 2. Vérifier que l'utilisateur existe
+    // =====================================================
+
     const userResult = await pool.request()
-      .input('matricule', sql.NVarChar, matricule)
-      .query(`SELECT Id, Nom, Prenom FROM Utilisateurs WHERE Matricule = @matricule`);
+      .input('matricule', sql.NVarChar(50), matricule)
+      .query(`
+        SELECT
+          Id,
+          Nom,
+          Prenom
+        FROM Utilisateurs
+        WHERE Matricule = @matricule
+          AND (EstActif = 1 OR EstActif IS NULL)
+      `);
 
     if (userResult.recordset.length === 0) {
-      return res.status(404).json({ success: false, message: 'Utilisateur non trouvé.' });
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur non trouvé.'
+      });
     }
 
     const user = userResult.recordset[0];
 
-    // 3. Empêcher les doublons pour la même session
-    const existingPresence = await pool.request()
-      .input('sessionId', sql.Int, sessionId)
-      .input('userId', sql.NVarChar, user.Id)
-      .query(`SELECT Id FROM Presences WHERE SessionId = @sessionId AND UserId = @userId`);
+    // =====================================================
+    // 3. Vérifier si l'utilisateur est déjà présent
+    //    dans une session encore active
+    // =====================================================
 
-    if (existingPresence.recordset.length > 0) {
-      return res.status(400).json({ success: false, message: 'Présence déjà enregistrée pour cette session.' });
+    const activePresence = await pool.request()
+      .input('userId', sql.UniqueIdentifier, user.Id)
+      .query(`
+        SELECT TOP 1
+          p.Id,
+          p.SessionId,
+          s.Titre
+        FROM Presences p
+        INNER JOIN Sessions s
+          ON s.Id = p.SessionId
+        WHERE p.UserId = @userId
+          AND s.EstActive = 1
+        ORDER BY p.Timestamp DESC
+      `);
+
+    if (activePresence.recordset.length > 0) {
+
+      const ancienneSession =
+        activePresence.recordset[0];
+
+      return res.status(400).json({
+        success: false,
+        message:
+          `Vous êtes déjà présent dans la session ` +
+          `"${ancienneSession.Titre}". ` +
+          `Vous ne pouvez pas pointer dans une autre session ` +
+          `tant que celle-ci est active.`
+      });
     }
 
-   // 4. Enregistrer la présence
+    // =====================================================
+    // 4. Sécurité supplémentaire :
+    //    vérifier le doublon dans cette session
+    // =====================================================
+
+    const existingPresence = await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .input('userId', sql.UniqueIdentifier, user.Id)
+      .query(`
+        SELECT Id
+        FROM Presences
+        WHERE SessionId = @sessionId
+          AND UserId = @userId
+      `);
+
+    if (existingPresence.recordset.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Présence déjà enregistrée pour cette session.'
+      });
+    }
+
+    // =====================================================
+    // 5. Enregistrer la présence
+    // =====================================================
+
     await pool.request()
       .input('sessionId', sql.Int, sessionId)
       .input('userId', sql.UniqueIdentifier, user.Id)
       .input('matricule', sql.NVarChar(50), matricule)
       .input('statut', sql.NVarChar(20), 'PRESENT')
       .query(`
-        INSERT INTO Presences (Id, SessionId, UserId, Matricule, Timestamp, Statut, SourceApp, Synchro, DateSync)
-        VALUES (NEWID(), @sessionId, @userId, @matricule, GETDATE(), @statut, 'Scan', 1, SYSDATETIME())
+        INSERT INTO Presences
+        (
+          Id,
+          SessionId,
+          UserId,
+          Matricule,
+          Timestamp,
+          Statut,
+          SourceApp,
+          Synchro,
+          DateSync
+        )
+        VALUES
+        (
+          NEWID(),
+          @sessionId,
+          @userId,
+          @matricule,
+          GETDATE(),
+          @statut,
+          'Scan',
+          1,
+          SYSDATETIME()
+        )
       `);
+
+    // =====================================================
+    // 6. Réponse
+    // =====================================================
 
     res.json({
       success: true,
-      message: `Présence enregistrée avec succès pour ${user.Prenom || ''} ${user.Nom || matricule}`
+      message:
+        `Présence enregistrée avec succès pour ` +
+        `${user.Prenom || ''} ${user.Nom || matricule}`,
+      sessionId: sessionId,
+      session: sessionTitre
     });
 
   } catch (err) {
-    console.error("❌ Erreur validation présence :", err.message);
-    res.status(500).json({ success: false, message: 'Erreur lors de l\'enregistrement.' });
+
+    console.error(
+      '❌ Erreur validation présence :',
+      err.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'enregistrement.'
+    });
   }
 });
 // Route pour les presences avec un check in
@@ -345,65 +463,268 @@ app.post('/api/presences/checkin', async (req, res) => {
   const { sessionId, matricule } = req.body;
 
   if (!sessionId || !matricule) {
-    return res.status(400).json({ success: false, message: 'sessionId et matricule sont requis.' });
+    return res.status(400).json({
+      success: false,
+      message: 'sessionId et matricule sont requis.'
+    });
   }
 
   try {
     const pool = await sql.connect(dbConfig);
 
+    // =====================================================
     // 1. Vérifier que la session existe et est active
+    // =====================================================
+
     const sessionResult = await pool.request()
       .input('sessionId', sql.Int, sessionId)
-      .query(`SELECT Id, Titre, EstActive FROM Sessions WHERE Id = @sessionId`);
+      .query(`
+        SELECT
+          Id,
+          Titre,
+          EstActive
+        FROM Sessions
+        WHERE Id = @sessionId
+      `);
 
     if (sessionResult.recordset.length === 0) {
-      return res.status(404).json({ success: false, message: 'Session introuvable.' });
-    }
-    if (sessionResult.recordset[0].EstActive !== true) {
-      return res.status(400).json({ success: false, message: 'Cette session n\'est plus active.' });
+      return res.status(404).json({
+        success: false,
+        message: 'Session introuvable.'
+      });
     }
 
+    const session = sessionResult.recordset[0];
+
+    if (session.EstActive !== true) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cette session n\'est plus active.'
+      });
+    }
+
+    // =====================================================
     // 2. Vérifier que l'utilisateur existe
+    // =====================================================
+
     const userResult = await pool.request()
       .input('matricule', sql.NVarChar(50), matricule)
-      .query(`SELECT Id, Nom, Prenom FROM Utilisateurs WHERE Matricule = @matricule`);
+      .query(`
+        SELECT
+          Id,
+          Nom,
+          Prenom
+        FROM Utilisateurs
+        WHERE Matricule = @matricule
+          AND (EstActif = 1 OR EstActif IS NULL)
+      `);
 
     if (userResult.recordset.length === 0) {
-      return res.status(404).json({ success: false, message: 'Matricule inconnu.' });
+      return res.status(404).json({
+        success: false,
+        message: 'Matricule inconnu.'
+      });
     }
 
     const user = userResult.recordset[0];
 
-    // 3. Empêcher les doublons pour la même session
+    // =====================================================
+    // 3. Vérifier si l'utilisateur est déjà présent
+    //    dans une session active
+    // =====================================================
+
+    const activePresence = await pool.request()
+      .input('userId', sql.UniqueIdentifier, user.Id)
+      .query(`
+        SELECT TOP 1
+          p.Id,
+          p.SessionId,
+          s.Titre
+        FROM Presences p
+        INNER JOIN Sessions s
+          ON s.Id = p.SessionId
+        WHERE p.UserId = @userId
+          AND s.EstActive = 1
+        ORDER BY p.Timestamp DESC
+      `);
+
+    if (activePresence.recordset.length > 0) {
+
+      const ancienneSession =
+        activePresence.recordset[0];
+
+      // Si c'est exactement la même session
+      if (ancienneSession.SessionId === sessionId) {
+        return res.status(400).json({
+          success: false,
+          message:
+            'Présence déjà enregistrée pour cette session.'
+        });
+      }
+
+      // Si c'est une autre session active
+      return res.status(400).json({
+        success: false,
+        message:
+          `Vous êtes déjà présent dans la session ` +
+          `"${ancienneSession.Titre}". ` +
+          `Vous ne pouvez pas pointer dans une autre session ` +
+          `tant que celle-ci est active.`
+      });
+    }
+
+    // =====================================================
+    // 4. Vérification supplémentaire du doublon
+    // =====================================================
+
     const existingPresence = await pool.request()
       .input('sessionId', sql.Int, sessionId)
       .input('userId', sql.UniqueIdentifier, user.Id)
-      .query(`SELECT Id FROM Presences WHERE SessionId = @sessionId AND UserId = @userId`);
+      .query(`
+        SELECT Id
+        FROM Presences
+        WHERE SessionId = @sessionId
+          AND UserId = @userId
+      `);
 
     if (existingPresence.recordset.length > 0) {
-      return res.status(400).json({ success: false, message: 'Présence déjà enregistrée pour cette session.' });
+      return res.status(400).json({
+        success: false,
+        message:
+          'Présence déjà enregistrée pour cette session.'
+      });
     }
 
-    // 4. Enregistrer la présence
+    // =====================================================
+    // 5. Enregistrer la présence
+    // =====================================================
+
     await pool.request()
       .input('sessionId', sql.Int, sessionId)
       .input('userId', sql.UniqueIdentifier, user.Id)
       .input('matricule', sql.NVarChar(50), matricule)
       .input('statut', sql.NVarChar(20), 'PRESENT')
       .query(`
-        INSERT INTO Presences (Id, SessionId, UserId, Matricule, Timestamp, Statut, SourceApp, Synchro, DateSync)
-        VALUES (NEWID(), @sessionId, @userId, @matricule, GETDATE(), @statut, 'Checkin', 1, SYSDATETIME())
+        INSERT INTO Presences
+        (
+          Id,
+          SessionId,
+          UserId,
+          Matricule,
+          Timestamp,
+          Statut,
+          SourceApp,
+          Synchro,
+          DateSync
+        )
+        VALUES
+        (
+          NEWID(),
+          @sessionId,
+          @userId,
+          @matricule,
+          GETDATE(),
+          @statut,
+          'Checkin',
+          1,
+          SYSDATETIME()
+        )
+      `);
+
+    // =====================================================
+    // 6. Réponse
+    // =====================================================
+
+    res.json({
+      success: true,
+      message:
+        `Présence enregistrée pour ` +
+        `${user.Prenom || ''} ${user.Nom || matricule}`,
+      sessionId: sessionId,
+      session: session.Titre
+    });
+
+  } catch (err) {
+
+    console.error(
+      '❌ Erreur check-in :',
+      err.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message: 'Erreur lors de l\'enregistrement.'
+    });
+  }
+});
+app.delete('/api/sessions/:id', async (req, res) => {
+
+  const { id } = req.params;
+
+  try {
+
+    const pool = await sql.connect(dbConfig);
+
+    const sessionResult = await pool.request()
+      .input('id', sql.Int, id)
+      .query(`
+        SELECT Id, Titre, EstActive, EstArchivee
+        FROM Sessions
+        WHERE Id = @id
+      `);
+
+    if (sessionResult.recordset.length === 0) {
+
+      return res.status(404).json({
+        success: false,
+        message: 'Session introuvable.'
+      });
+
+    }
+
+    const session = sessionResult.recordset[0];
+
+    if (
+      session.EstActive === true ||
+      session.EstActive === 1
+    ) {
+
+      return res.status(400).json({
+        success: false,
+        message:
+          'Impossible d’archiver une session encore active. ' +
+          'Fermez-la d’abord.'
+      });
+
+    }
+
+    await pool.request()
+      .input('id', sql.Int, id)
+      .query(`
+        UPDATE Sessions
+        SET EstArchivee = 1
+        WHERE Id = @id
       `);
 
     res.json({
       success: true,
-      message: `Présence enregistrée pour ${user.Prenom || ''} ${user.Nom || matricule}`
+      message: 'Session archivée avec succès.'
     });
 
   } catch (err) {
-    console.error("❌ Erreur checkin présence :", err.message);
-    res.status(500).json({ success: false, message: 'Erreur lors de l\'enregistrement.' });
+
+    console.error(
+      '❌ ERREUR ARCHIVAGE SESSION :',
+      err.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+
   }
+
 });
 // Route ADMIN UNIQUEMENT : générer/ressortir le badge QR de n'importe quel utilisateur
 app.get('/api/admin/badges/:matricule', verifyToken, requireAdmin, async (req, res) => {
@@ -439,7 +760,7 @@ app.get('/api/admin/badges/:matricule', verifyToken, requireAdmin, async (req, r
 app.get('/api/admin/presences/today', async (req, res) => {
   try {
     const pool = await sql.connect(dbConfig);
-   const result = await pool.request().query(`
+    const result = await pool.request().query(`
   SELECT u.Id, u.Matricule, u.Nom, u.Prenom, p.Timestamp, s.Titre AS SessionTitre
   FROM Utilisateurs u
   OUTER APPLY (
@@ -454,14 +775,14 @@ app.get('/api/admin/presences/today', async (req, res) => {
   ORDER BY u.Nom, u.Prenom
 `);
 
-const utilisateurs = result.recordset.map(row => ({
-  Matricule: row.Matricule,
-  Nom: row.Nom,
-  Prenom: row.Prenom,
-  Timestamp: row.Timestamp,
-  Statut: row.Timestamp ? 'Présent' : 'Absent',
-  Session: row.SessionTitre || null
-}));
+    const utilisateurs = result.recordset.map(row => ({
+      Matricule: row.Matricule,
+      Nom: row.Nom,
+      Prenom: row.Prenom,
+      Timestamp: row.Timestamp,
+      Statut: row.Timestamp ? 'Présent' : 'Absent',
+      Session: row.SessionTitre || null
+    }));
     const total = utilisateurs.length;
     const presents = utilisateurs.filter(u => u.Statut === 'Présent').length;
 
@@ -559,25 +880,25 @@ app.get('/api/admin/statistics', async (req, res) => {
 
     const totalUsers = usersResult.recordset[0].totalUsers || 0;
     // Présents aujourd'hui
-const presentsTodayResult = await pool.request().query(`
+    const presentsTodayResult = await pool.request().query(`
   SELECT COUNT(DISTINCT UserId) AS presentsToday
   FROM Presences
   WHERE CAST([Timestamp] AS DATE) = CAST(GETDATE() AS DATE)
 `);
 
-const presentsToday =
-  presentsTodayResult.recordset[0].presentsToday || 0;
+    const presentsToday =
+      presentsTodayResult.recordset[0].presentsToday || 0;
 
 
-// Sessions actuellement actives
-const activeSessionsResult = await pool.request().query(`
+    // Sessions actuellement actives
+    const activeSessionsResult = await pool.request().query(`
   SELECT COUNT(*) AS activeSessions
   FROM Sessions
   WHERE EstActive = 1
 `);
 
-const activeSessions =
-  activeSessionsResult.recordset[0].activeSessions || 0;
+    const activeSessions =
+      activeSessionsResult.recordset[0].activeSessions || 0;
 
     // Nombre de sessions pendant la période
     const sessionsResult = await pool.request()

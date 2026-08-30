@@ -340,36 +340,59 @@
         // ================================
         // PRÉSENCES
         // ================================
+if (
+    page === 'presences.html' ||
+    page.includes('presences')
+) {
+
+    console.log("📋 Page Présences chargée");
+
+    if (
+        typeof window.chargerPresences === 'function'
+    ) {
+
+        console.log("🔄 Chargement des présences...");
+
+        window.chargerPresences();
+
+    } else {
+
+        console.error("❌ chargerPresences() introuvable");
+    }
+}
+
+
+// ===============================
+// PAGE SESSIONS
+// ===============================
+
+if (
+    page === 'sessions.html' ||
+    page.includes('sessions')
+) {
+
+    console.log("📋 Page Sessions chargée");
+
+    setTimeout(() => {
 
         if (
-            page === 'presences.html' ||
-            page.includes('presences')
+            typeof window.chargerSessions === 'function'
         ) {
 
-            console.log(
-                "📋 Page Présences chargée"
+            console.log("🔄 Chargement des sessions...");
+
+            window.chargerSessions();
+
+        } else {
+
+            console.error(
+                "❌ chargerSessions() introuvable"
             );
-
-            if (
-                typeof window.chargerPresences === 'function'
-            ) {
-
-                console.log(
-                    "🔄 Chargement des présences..."
-                );
-
-                window.chargerPresences();
-
-            } else {
-
-                console.error(
-                    "❌ chargerPresences() introuvable"
-                );
-
-            }
 
         }
 
+    }, 100);
+}
     } catch (error) {
 
         console.error(
@@ -1849,6 +1872,326 @@
     }
   }
 }
+async function chargerSessions() {
+
+  console.log("🔄 Chargement des sessions...");
+
+  const tbody = document.getElementById("sessionsTableBody");
+
+  if (!tbody) {
+    console.error("❌ sessionsTableBody introuvable");
+    return;
+  }
+
+  try {
+
+    const response = await fetch(
+      "http://localhost:3001/api/sessions/recent"
+    );
+
+    const data = await response.json();
+
+    console.log("📋 Réponse sessions :", data);
+
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+
+    const sessions = data.sessions || [];
+
+    if (sessions.length === 0) {
+
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" style="text-align:center;">
+            Aucune session trouvée.
+          </td>
+        </tr>
+      `;
+
+      mettreAJourStatsSessions([]);
+      const searchInput =
+     document.getElementById("sessionSearch");
+
+    if (searchInput) {
+
+     searchInput.oninput =
+    rechercherSessions;
+
+}
+
+      return;
+    }
+
+    tbody.innerHTML = sessions.map(session => {
+
+      const date = new Date(session.DateCreation);
+
+      const dateFormatee = date.toLocaleString("fr-FR");
+
+      const active = session.EstActive === true ||
+                     session.EstActive === 1;
+
+      return `
+        <tr>
+
+          <td>${session.Id}</td>
+
+          <td>
+            ${session.Titre || "-"}
+          </td>
+
+          <td>
+            ${session.Responsable || "-"}
+          </td>
+
+          <td>
+            ${dateFormatee}
+          </td>
+
+          <td>
+            -
+          </td>
+
+          <td>
+            ${
+              active
+                ? `<span style="
+                    background:#dcfce7;
+                    color:#166534;
+                    padding:5px 10px;
+                    border-radius:20px;
+                    font-size:12px;
+                  ">En cours</span>`
+                : `<span style="
+                    background:#e5e7eb;
+                    color:#374151;
+                    padding:5px 10px;
+                    border-radius:20px;
+                    font-size:12px;
+                  ">Terminée</span>`
+            }
+          </td>
+
+          <td>
+
+            ${
+              active
+                ? `
+                  <button
+                    class="btn btn-outline"
+                    onclick="fermerSession(${session.Id})"
+                  >
+                    Fermer
+                  </button>
+                `
+                : `
+                  <span style="color:#64748b;">
+                    —
+                  </span>
+                `
+            }
+
+          </td>
+
+        </tr>
+      `;
+
+    }).join("");
+
+    mettreAJourStatsSessions(sessions);
+
+  } catch (error) {
+
+    console.error(
+      "❌ Erreur chargement sessions :",
+      error
+    );
+
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" style="text-align:center;color:red;">
+          Impossible de charger les sessions.
+        </td>
+      </tr>
+    `;
+  }
+}
+async function fermerSession(sessionId) {
+
+  if (!confirm("Voulez-vous vraiment fermer cette session ?")) {
+    return;
+  }
+
+  try {
+
+    const response = await fetch(
+      "http://localhost:3001/api/sessions/close",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          sessionId: sessionId
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+
+    alert("Session fermée avec succès.");
+
+    await chargerSessions();
+
+  } catch (error) {
+
+    console.error(
+      "❌ Erreur fermeture session :",
+      error
+    );
+
+    alert(
+      "Impossible de fermer la session : " +
+      error.message
+    );
+  }
+}
+async function creerSession() {
+
+  const titre = prompt(
+    "Entrez le titre de la nouvelle session :"
+  );
+
+  if (!titre || !titre.trim()) {
+    return;
+  }
+
+  const responsable = prompt(
+    "Entrez le responsable de la session :",
+    "Admin"
+  );
+
+  try {
+
+    const response = await fetch(
+      "http://localhost:3001/api/sessions/create",
+      {
+        method: "POST",
+
+        headers: {
+          "Content-Type": "application/json"
+        },
+
+        body: JSON.stringify({
+          titre: titre.trim(),
+          responsable: responsable || "Admin"
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+
+    alert(
+      "Session créée avec succès !"
+    );
+
+    await chargerSessions();
+
+  } catch (error) {
+
+    console.error(
+      "❌ Erreur création session :",
+      error
+    );
+
+    alert(
+      "Impossible de créer la session : " +
+      error.message
+    );
+  }
+}
+function mettreAJourStatsSessions(sessions) {
+
+  const actives = sessions.filter(session =>
+    session.EstActive === true ||
+    session.EstActive === 1
+  );
+
+  const aujourdHui = sessions.filter(session => {
+
+    const date = new Date(session.DateCreation);
+
+    const maintenant = new Date();
+
+    return (
+      date.getFullYear() === maintenant.getFullYear() &&
+      date.getMonth() === maintenant.getMonth() &&
+      date.getDate() === maintenant.getDate()
+    );
+
+  });
+
+  document.getElementById(
+    "sessions-actives"
+  ).textContent = actives.length;
+
+  document.getElementById(
+    "sessions-aujourd-hui"
+  ).textContent = aujourdHui.length;
+
+  /*
+   * Pour l'instant nous ne calculons pas encore
+   * la présence moyenne et les participants ici,
+   * car /api/sessions/recent ne renvoie pas
+   * le nombre de participants.
+   */
+
+  document.getElementById(
+    "presence-moyenne"
+  ).textContent = "0%";
+
+  document.getElementById(
+    "total-participants"
+  ).textContent = "0";
+}
+function rechercherSessions() {
+
+  const input =
+    document.getElementById("sessionSearch");
+
+  const search =
+    input.value.toLowerCase().trim();
+
+  const rows =
+    document.querySelectorAll(
+      "#sessionsTableBody tr"
+    );
+
+  rows.forEach(row => {
+
+    const texte =
+      row.textContent.toLowerCase();
+
+    if (texte.includes(search)) {
+      row.style.display = "";
+    } else {
+      row.style.display = "none";
+    }
+
+  });
+
+}
+
+
   </script>
   <script>
     const menuToggle = document.getElementById("menuToggle");
