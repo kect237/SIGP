@@ -390,7 +390,7 @@ if (
             );
 
         }
-
+         chargerStatsSessions();
     }, 100);
 }
     } catch (error) {
@@ -1874,6 +1874,7 @@ if (
 }
 async function chargerSessions() {
 
+
   console.log("🔄 Chargement des sessions...");
 
   const tbody = document.getElementById("sessionsTableBody");
@@ -1950,7 +1951,7 @@ async function chargerSessions() {
           </td>
 
           <td>
-            -
+            ${session.Participants || 0}
           </td>
 
           <td>
@@ -1975,23 +1976,25 @@ async function chargerSessions() {
 
           <td>
 
-            ${
-              active
-                ? `
-                  <button
-                    class="btn btn-outline"
-                    onclick="fermerSession(${session.Id})"
-                  >
-                    Fermer
-                  </button>
-                `
-                : `
-                  <span style="color:#64748b;">
-                    —
-                  </span>
-                `
-            }
-
+           ${
+  active
+    ? `
+      <button
+        class="btn btn-outline"
+        onclick="fermerSession(${session.Id})"
+      >
+        Fermer
+      </button>
+    `
+    : `
+      <button
+        class="btn btn-danger"
+        onclick="archiverSession(${session.Id}, '${(session.Titre || '').replace(/'/g, "\\'")}')"
+      >
+        🗑️ Archiver
+      </button>
+    `
+}
           </td>
 
         </tr>
@@ -2007,6 +2010,7 @@ async function chargerSessions() {
       "❌ Erreur chargement sessions :",
       error
     );
+    
 
     tbody.innerHTML = `
       <tr>
@@ -2016,7 +2020,175 @@ async function chargerSessions() {
       </tr>
     `;
   }
+  
 }
+async function chargerStatsSessions() {
+
+  console.log("📊 Chargement statistiques sessions...");
+
+  try {
+
+    const response = await fetch(
+      "http://localhost:3001/api/sessions/statistics"
+    );
+
+    const data = await response.json();
+
+    console.log(
+      "📊 Statistiques sessions :",
+      data
+    );
+
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+    const searchInput =
+  document.getElementById("sessionSearch");
+
+if (searchInput) {
+
+  searchInput.oninput =
+    rechercherSessions;
+
+}
+
+    const stats = data.stats;
+
+
+    // Sessions actives
+    const activeElement =
+      document.getElementById(
+        "stat-active-sessions"
+      );
+
+    if (activeElement) {
+      activeElement.textContent =
+        stats.activeSessions;
+    }
+
+
+    // Sessions aujourd'hui
+    const todayElement =
+      document.getElementById(
+        "stat-today-sessions"
+      );
+
+    if (todayElement) {
+      todayElement.textContent =
+        stats.todaySessions;
+    }
+
+
+    // Participants moyens
+    const averageElement =
+      document.getElementById(
+        "stat-average-presence"
+      );
+
+    if (averageElement) {
+      averageElement.textContent =
+        stats.averagePresence;
+    }
+
+
+    // Total participants
+    const participantsElement =
+      document.getElementById(
+        "stat-total-participants"
+      );
+
+    if (participantsElement) {
+      participantsElement.textContent =
+        stats.totalParticipants;
+    }
+
+  } catch (error) {
+
+    console.error(
+      "❌ Erreur statistiques sessions :",
+      error
+    );
+
+  }
+
+}
+function rechercherSessions() {
+
+  const input =
+    document.getElementById("sessionSearch");
+
+  if (!input) return;
+
+  const recherche =
+    input.value.toLowerCase().trim();
+
+  const lignes =
+    document.querySelectorAll(
+      "#sessionsTableBody tr"
+    );
+
+  lignes.forEach(ligne => {
+
+    const texte =
+      ligne.textContent.toLowerCase();
+
+    ligne.style.display =
+      texte.includes(recherche)
+        ? ""
+        : "none";
+
+  });
+
+}
+async function archiverSession(sessionId, titre) {
+
+  const confirmation = confirm(
+    `Voulez-vous vraiment archiver la session "${titre}" ?\n\n` +
+    `Les présences enregistrées seront conservées.`
+  );
+
+  if (!confirmation) {
+    return;
+  }
+
+  try {
+
+    const response = await fetch(
+      `http://localhost:3001/api/sessions/${sessionId}`,
+      {
+        method: "DELETE"
+      }
+    );
+
+    const data = await response.json();
+
+    console.log("📦 Réponse archivage :", data);
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.message || "Erreur lors de l'archivage."
+      );
+    }
+
+    alert("✅ Session archivée avec succès.");
+
+    // Recharge le tableau et les statistiques
+    chargerSessions();
+
+  } catch (error) {
+
+    console.error(
+      "❌ Erreur archivage session :",
+      error
+    );
+
+    alert(
+      "❌ Impossible d'archiver la session : " +
+      error.message
+    );
+  }
+}
+
 async function fermerSession(sessionId) {
 
   if (!confirm("Voulez-vous vraiment fermer cette session ?")) {
@@ -2119,6 +2291,7 @@ async function creerSession() {
     );
   }
 }
+
 function mettreAJourStatsSessions(sessions) {
 
   const actives = sessions.filter(session =>
@@ -2129,7 +2302,6 @@ function mettreAJourStatsSessions(sessions) {
   const aujourdHui = sessions.filter(session => {
 
     const date = new Date(session.DateCreation);
-
     const maintenant = new Date();
 
     return (
@@ -2140,54 +2312,89 @@ function mettreAJourStatsSessions(sessions) {
 
   });
 
-  document.getElementById(
-    "sessions-actives"
-  ).textContent = actives.length;
 
-  document.getElementById(
-    "sessions-aujourd-hui"
-  ).textContent = aujourdHui.length;
+  // ==========================================
+  // Sessions actives
+  // ==========================================
 
-  /*
-   * Pour l'instant nous ne calculons pas encore
-   * la présence moyenne et les participants ici,
-   * car /api/sessions/recent ne renvoie pas
-   * le nombre de participants.
-   */
+  const activeElement =
+    document.getElementById("stat-active-sessions");
 
-  document.getElementById(
-    "presence-moyenne"
-  ).textContent = "0%";
+  if (activeElement) {
+    activeElement.textContent = actives.length;
+  }
 
-  document.getElementById(
-    "total-participants"
-  ).textContent = "0";
-}
-function rechercherSessions() {
 
-  const input =
-    document.getElementById("sessionSearch");
+  // ==========================================
+  // Sessions aujourd'hui
+  // ==========================================
 
-  const search =
-    input.value.toLowerCase().trim();
+  const todayElement =
+    document.getElementById("stat-today-sessions");
 
-  const rows =
-    document.querySelectorAll(
-      "#sessionsTableBody tr"
+  if (todayElement) {
+    todayElement.textContent = aujourdHui.length;
+  }
+
+
+  // ==========================================
+  // Participants moyens / session
+  // ==========================================
+
+  const averageElement =
+    document.getElementById("stat-average-presence");
+
+  if (averageElement) {
+
+    if (sessions.length === 0) {
+
+      averageElement.textContent = "0";
+
+    } else {
+
+      const totalParticipants =
+        sessions.reduce(
+          (total, session) =>
+            total + Number(session.Participants || 0),
+          0
+        );
+
+      const moyenne =
+        totalParticipants / sessions.length;
+
+      averageElement.textContent =
+        moyenne.toFixed(1);
+    }
+  }
+
+
+  // ==========================================
+  // Total participants
+  // ==========================================
+
+  const participantsElement =
+    document.getElementById(
+      "stat-total-participants"
     );
 
-  rows.forEach(row => {
+  if (participantsElement) {
 
-    const texte =
-      row.textContent.toLowerCase();
+    const participantsUniques =
+      new Set();
 
-    if (texte.includes(search)) {
-      row.style.display = "";
-    } else {
-      row.style.display = "none";
-    }
+    sessions.forEach(session => {
 
-  });
+      /*
+       * Pour l'instant, /api/sessions/recent
+       * renvoie seulement le nombre de participants.
+       *
+       * Le total global est donc récupéré
+       * par chargerStatsSessions().
+       */
+
+    });
+
+  }
 
 }
 
