@@ -297,109 +297,177 @@ app.get('/api/sessions/recent', async (req, res) => {
   }
 
 });
-app.get('/api/sessions/statistics', async (req, res) => {
-
+app.get('/api/admin/statistics', async (req, res) => {
   try {
-
     const pool = await sql.connect(dbConfig);
 
-    // ============================================
-    // 1. SESSIONS ACTIVES
-    // ============================================
+    let { dateDebut, dateFin } = req.query;
+
+    if (!dateDebut) {
+      dateDebut = new Date().toISOString().slice(0, 10);
+    }
+
+    if (!dateFin) {
+      dateFin = dateDebut;
+    }
+
+    // =====================================================
+    // PARTICIPANTS ATTENDUS
+    // Une ligne = un utilisateur inscrit à une session
+    // =====================================================
+
+    const participantsResult = await pool.request()
+      .input('dateDebut', sql.Date, dateDebut)
+      .input('dateFin', sql.Date, dateFin)
+      .query(`
+        SELECT COUNT(*) AS totalParticipants
+        FROM SessionParticipants sp
+        INNER JOIN Sessions s
+          ON s.Id = sp.SessionId
+        INNER JOIN Utilisateurs u
+          ON u.Id = sp.UserId
+        WHERE CAST(s.DateCreation AS DATE)
+              BETWEEN @dateDebut AND @dateFin
+          AND (u.Role IS NULL OR u.Role <> 'Admin')
+      `);
+
+    const totalParticipants =
+      participantsResult.recordset[0].totalParticipants || 0;
+
+
+    // =====================================================
+    // SESSIONS
+    // =====================================================
+
+    const sessionsResult = await pool.request()
+      .input('dateDebut', sql.Date, dateDebut)
+      .input('dateFin', sql.Date, dateFin)
+      .query(`
+        SELECT COUNT(*) AS totalSessions
+        FROM Sessions
+        WHERE CAST(DateCreation AS DATE)
+              BETWEEN @dateDebut AND @dateFin
+      `);
+
+    const totalSessions =
+      sessionsResult.recordset[0].totalSessions || 0;
+
+
+    // =====================================================
+    // PRÉSENCES
+    // =====================================================
+
+    const presenceResult = await pool.request()
+      .input('dateDebut', sql.Date, dateDebut)
+      .input('dateFin', sql.Date, dateFin)
+      .query(`
+        SELECT
+          COUNT(*) AS totalPresences,
+
+          SUM(
+            CASE
+              WHEN UPPER(ISNULL(Statut, 'PRESENT')) = 'RETARD'
+              THEN 1
+              ELSE 0
+            END
+          ) AS totalRetards
+
+        FROM Presences p
+        INNER JOIN Sessions s
+          ON s.Id = p.SessionId
+
+        WHERE CAST(s.DateCreation AS DATE)
+              BETWEEN @dateDebut AND @dateFin
+      `);
+
+    const totalPresences =
+      presenceResult.recordset[0].totalPresences || 0;
+
+    const totalRetards =
+      presenceResult.recordset[0].totalRetards || 0;
+
+
+    // =====================================================
+    // ABSENCES
+    // =====================================================
+
+    const absences = Math.max(
+      0,
+      totalParticipants - totalPresences
+    );
+
+
+    // =====================================================
+    // TAUX DE PRÉSENCE
+    // =====================================================
+
+    const presenceRate =
+      totalParticipants > 0
+        ? Math.round(
+            (totalPresences / totalParticipants) * 100
+          )
+        : 0;
+
+
+    // =====================================================
+    // PRÉSENTS AUJOURD'HUI
+    // =====================================================
+
+    const todayResult = await pool.request().query(`
+      SELECT COUNT(*) AS presentsToday
+      FROM Presences
+      WHERE CAST([Timestamp] AS DATE)
+            = CAST(GETDATE() AS DATE)
+    `);
+
+    const presentsToday =
+      todayResult.recordset[0].presentsToday || 0;
+
+
+    // =====================================================
+    // SESSIONS ACTIVES
+    // =====================================================
 
     const activeResult = await pool.request().query(`
-      SELECT COUNT(*) AS total
+      SELECT COUNT(*) AS activeSessions
       FROM Sessions
       WHERE EstActive = 1
-        AND ISNULL(EstArchivee, 0) = 0
     `);
 
     const activeSessions =
-      activeResult.recordset[0].total || 0;
+      activeResult.recordset[0].activeSessions || 0;
 
 
-    // ============================================
-    // 2. SESSIONS AUJOURD'HUI
-    // ============================================
-
-    const todayResult = await pool.request().query(`
-      SELECT COUNT(*) AS total
-      FROM Sessions
-      WHERE CAST(DateCreation AS DATE) = CAST(GETDATE() AS DATE)
-        AND ISNULL(EstArchivee, 0) = 0
-    `);
-
-    const todaySessions =
-      todayResult.recordset[0].total || 0;
-
-
-    // ============================================
-    // 3. TOTAL PARTICIPANTS
-    // ============================================
-    //
-    // Une personne est comptée une seule fois
-    // même si elle a participé à plusieurs sessions.
-    //
-
-    const participantsResult = await pool.request().query(`
-      SELECT COUNT(DISTINCT p.UserId) AS total
-      FROM Presences p
-      INNER JOIN Sessions s
-        ON s.Id = p.SessionId
-      WHERE ISNULL(s.EstArchivee, 0) = 0
-    `);
-
-    const totalParticipants =
-      participantsResult.recordset[0].total || 0;
-
-
-    // ============================================
-    // 4. PRÉSENCE MOYENNE
-    // ============================================
-    //
-    // On calcule la moyenne du nombre de
-    // participants réellement présents par session.
-    //
-    // On ne considère PAS que tous les utilisateurs
-    // doivent participer à toutes les sessions.
-    //
-
-    const averageResult = await pool.request().query(`
-      SELECT
-        AVG(CAST(Participants AS FLOAT)) AS moyenne
-      FROM
-      (
-        SELECT
-          s.Id,
-          COUNT(DISTINCT p.UserId) AS Participants
-        FROM Sessions s
-        LEFT JOIN Presences p
-          ON p.SessionId = s.Id
-        WHERE ISNULL(s.EstArchivee, 0) = 0
-        GROUP BY s.Id
-      ) AS SessionStats
-    `);
-
-    const averagePresence =
-      averageResult.recordset[0].moyenne || 0;
-
+    // =====================================================
+    // RÉPONSE
+    // =====================================================
 
     res.json({
       success: true,
 
+      period: {
+        dateDebut,
+        dateFin
+      },
+
       stats: {
-        activeSessions,
-        todaySessions,
-        averagePresence: Math.round(averagePresence),
-        totalParticipants
+        totalUsers: totalParticipants,
+        totalSessions,
+        totalPresences,
+        usersPresent: totalPresences,
+        totalRetards,
+        absences,
+        presenceRate,
+        presentsToday,
+        activeSessions
       }
     });
 
   } catch (err) {
 
     console.error(
-      "❌ Erreur statistiques sessions :",
-      err
+      '❌ Erreur statistiques :',
+      err.message
     );
 
     res.status(500).json({
@@ -407,7 +475,6 @@ app.get('/api/sessions/statistics', async (req, res) => {
       message: err.message
     });
   }
-
 });
 // Route : Enregistrer une présence via le scan d'un QR code
 // Route : Consulter la session actuellement active (utilisée par la page de scan)
@@ -606,6 +673,136 @@ app.post('/api/presences/scan', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Erreur lors de l\'enregistrement.'
+    });
+  }
+});
+// =====================================================
+// INSCRIRE UN UTILISATEUR À UNE SESSION
+// =====================================================
+app.post('/api/sessions/:sessionId/participer', async (req, res) => {
+  const { sessionId } = req.params;
+  const { userId } = req.body;
+
+  if (!sessionId || !userId) {
+    return res.status(400).json({
+      success: false,
+      message: 'Session et utilisateur requis.'
+    });
+  }
+
+  try {
+    const pool = await sql.connect(dbConfig);
+
+    // 1. Vérifier que la session existe
+    const sessionResult = await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .query(`
+        SELECT Id, Titre, EstActive
+        FROM Sessions
+        WHERE Id = @sessionId
+      `);
+
+    if (sessionResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Session introuvable.'
+      });
+    }
+
+    const session = sessionResult.recordset[0];
+
+    // 2. Vérifier que l'utilisateur existe
+    const userResult = await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .query(`
+        SELECT Id, Matricule, Nom, Prenom
+        FROM Utilisateurs
+        WHERE Id = @userId
+    `);
+
+    if (userResult.recordset.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur introuvable.'
+      });
+    }
+
+    // 3. Vérifier si l'utilisateur est déjà inscrit
+    const inscriptionResult = await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .input('userId', sql.UniqueIdentifier, userId)
+      .query(`
+        SELECT Id
+        FROM SessionParticipants
+        WHERE SessionId = @sessionId
+          AND UserId = @userId
+      `);
+
+    if (inscriptionResult.recordset.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vous êtes déjà inscrit à cette session.'
+      });
+    }
+
+    // 4. Vérifier si l'utilisateur est déjà
+    //    dans une autre session active
+    const activePresenceResult = await pool.request()
+      .input('userId', sql.UniqueIdentifier, userId)
+      .query(`
+        SELECT TOP 1
+          p.SessionId,
+          s.Titre
+        FROM Presences p
+        INNER JOIN Sessions s
+          ON s.Id = p.SessionId
+        WHERE p.UserId = @userId
+          AND s.EstActive = 1
+        ORDER BY p.Timestamp DESC
+      `);
+
+    if (activePresenceResult.recordset.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message:
+          `Vous êtes déjà présent dans la session "${activePresenceResult.recordset[0].Titre}".`
+      });
+    }
+
+    // 5. Inscrire l'utilisateur
+    await pool.request()
+      .input('sessionId', sql.Int, sessionId)
+      .input('userId', sql.UniqueIdentifier, userId)
+      .query(`
+        INSERT INTO SessionParticipants
+        (
+          SessionId,
+          UserId,
+          DateInscription
+        )
+        VALUES
+        (
+          @sessionId,
+          @userId,
+          SYSDATETIME()
+        )
+      `);
+
+    res.json({
+      success: true,
+      message: `Inscription réussie à la session "${session.Titre}".`
+    });
+
+  } catch (err) {
+
+    console.error(
+      '❌ Erreur inscription session :',
+      err.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message: 'Erreur serveur lors de l’inscription.'
     });
   }
 });
@@ -877,6 +1074,98 @@ app.delete('/api/sessions/:id', async (req, res) => {
   }
 
 });
+// =====================================================
+// GÉNÉRER LES INFORMATIONS D'UN BADGE UTILISATEUR
+// =====================================================
+
+app.get('/api/admin/users/:userId/badge', async (req, res) => {
+
+  try {
+
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: 'ID utilisateur requis.'
+      });
+    }
+
+    const pool = await sql.connect(dbConfig);
+
+    const result = await pool.request()
+      .input(
+        'userId',
+        sql.UniqueIdentifier,
+        userId
+      )
+      .query(`
+        SELECT
+          Id,
+          Matricule,
+          Nom,
+          Prenom,
+          Email,
+          Role,
+          EstActif
+        FROM Utilisateurs
+        WHERE Id = @userId
+      `);
+
+    if (result.recordset.length === 0) {
+
+      return res.status(404).json({
+        success: false,
+        message: 'Utilisateur introuvable.'
+      });
+
+    }
+
+    const user = result.recordset[0];
+
+    // -------------------------------------------------
+    // DONNÉES DU QR CODE PERMANENT
+    // -------------------------------------------------
+
+    const qrData = JSON.stringify({
+      matricule: user.Matricule,
+      nom: user.Nom,
+      prenom: user.Prenom
+    });
+
+    res.json({
+
+      success: true,
+
+      user: {
+        id: user.Id,
+        matricule: user.Matricule,
+        nom: user.Nom,
+        prenom: user.Prenom,
+        email: user.Email,
+        role: user.Role,
+        estActif: user.EstActif
+      },
+
+      qrData: qrData
+
+    });
+
+  } catch (err) {
+
+    console.error(
+      '❌ ERREUR GÉNÉRATION BADGE :',
+      err.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+
+  }
+
+});
 // Route ADMIN UNIQUEMENT : générer/ressortir le badge QR de n'importe quel utilisateur
 app.get('/api/admin/badges/:matricule', verifyToken, requireAdmin, async (req, res) => {
   const { matricule } = req.params;
@@ -1006,15 +1295,11 @@ app.get('/api/admin/presences/today', async (req, res) => {
 
 app.get('/api/admin/statistics', async (req, res) => {
   try {
-
     const pool = await sql.connect(dbConfig);
 
     let { dateDebut, dateFin } = req.query;
 
-    // ==============================
-    // DATES PAR DÉFAUT
-    // ==============================
-
+    // Par défaut : aujourd'hui
     if (!dateDebut) {
       dateDebut = new Date().toISOString().slice(0, 10);
     }
@@ -1023,9 +1308,15 @@ app.get('/api/admin/statistics', async (req, res) => {
       dateFin = dateDebut;
     }
 
-    // ==============================
-    // 1. UTILISATEURS INSCRITS
-    // ==============================
+    // =====================================================
+    // 1. PARTICIPATIONS ATTENDUES
+    // =====================================================
+    // Une ligne dans SessionParticipants =
+    // un utilisateur inscrit à une session.
+    //
+    // On ne compte donc PLUS :
+    // utilisateurs × sessions
+    // =====================================================
 
     const participantsResult = await pool.request()
       .input('dateDebut', sql.Date, dateDebut)
@@ -1037,9 +1328,8 @@ app.get('/api/admin/statistics', async (req, res) => {
           ON s.Id = sp.SessionId
         INNER JOIN Utilisateurs u
           ON u.Id = sp.UserId
-        WHERE
-          CAST(s.DateCreation AS DATE)
-          BETWEEN @dateDebut AND @dateFin
+        WHERE CAST(s.DateCreation AS DATE)
+              BETWEEN @dateDebut AND @dateFin
           AND (u.Role IS NULL OR u.Role != 'Admin')
       `);
 
@@ -1047,9 +1337,9 @@ app.get('/api/admin/statistics', async (req, res) => {
       participantsResult.recordset[0].totalParticipants || 0;
 
 
-    // ==============================
-    // 2. SESSIONS
-    // ==============================
+    // =====================================================
+    // 2. NOMBRE DE SESSIONS
+    // =====================================================
 
     const sessionsResult = await pool.request()
       .input('dateDebut', sql.Date, dateDebut)
@@ -1057,18 +1347,17 @@ app.get('/api/admin/statistics', async (req, res) => {
       .query(`
         SELECT COUNT(*) AS totalSessions
         FROM Sessions
-        WHERE
-          CAST(DateCreation AS DATE)
-          BETWEEN @dateDebut AND @dateFin
+        WHERE CAST(DateCreation AS DATE)
+              BETWEEN @dateDebut AND @dateFin
       `);
 
     const totalSessions =
       sessionsResult.recordset[0].totalSessions || 0;
 
 
-    // ==============================
+    // =====================================================
     // 3. PRÉSENCES
-    // ==============================
+    // =====================================================
 
     const presenceResult = await pool.request()
       .input('dateDebut', sql.Date, dateDebut)
@@ -1087,9 +1376,8 @@ app.get('/api/admin/statistics', async (req, res) => {
 
         FROM Presences
 
-        WHERE
-          CAST([Timestamp] AS DATE)
-          BETWEEN @dateDebut AND @dateFin
+        WHERE CAST([Timestamp] AS DATE)
+              BETWEEN @dateDebut AND @dateFin
       `);
 
     const totalPresences =
@@ -1099,9 +1387,9 @@ app.get('/api/admin/statistics', async (req, res) => {
       presenceResult.recordset[0].totalRetards || 0;
 
 
-    // ==============================
+    // =====================================================
     // 4. ABSENCES
-    // ==============================
+    // =====================================================
 
     const absences = Math.max(
       0,
@@ -1109,9 +1397,9 @@ app.get('/api/admin/statistics', async (req, res) => {
     );
 
 
-    // ==============================
+    // =====================================================
     // 5. TAUX DE PRÉSENCE
-    // ==============================
+    // =====================================================
 
     const presenceRate =
       totalParticipants > 0
@@ -1121,42 +1409,40 @@ app.get('/api/admin/statistics', async (req, res) => {
         : 0;
 
 
-    // ==============================
+    // =====================================================
     // 6. PRÉSENTS AUJOURD'HUI
-    // ==============================
+    // =====================================================
 
-    const todayResult = await pool.request()
-      .query(`
-        SELECT COUNT(*) AS presentsToday
-        FROM Presences
-        WHERE CAST([Timestamp] AS DATE) = CAST(GETDATE() AS DATE)
-      `);
+    const todayResult = await pool.request().query(`
+      SELECT COUNT(*) AS presentsToday
+      FROM Presences
+      WHERE CAST([Timestamp] AS DATE)
+            = CAST(GETDATE() AS DATE)
+    `);
 
     const presentsToday =
       todayResult.recordset[0].presentsToday || 0;
 
 
-    // ==============================
+    // =====================================================
     // 7. SESSIONS ACTIVES
-    // ==============================
+    // =====================================================
 
-    const activeResult = await pool.request()
-      .query(`
-        SELECT COUNT(*) AS activeSessions
-        FROM Sessions
-        WHERE EstActive = 1
-      `);
+    const activeResult = await pool.request().query(`
+      SELECT COUNT(*) AS activeSessions
+      FROM Sessions
+      WHERE EstActive = 1
+    `);
 
     const activeSessions =
       activeResult.recordset[0].activeSessions || 0;
 
 
-    // ==============================
-    // RÉPONSE
-    // ==============================
+    // =====================================================
+    // 8. RÉPONSE
+    // =====================================================
 
     res.json({
-
       success: true,
 
       period: {
@@ -1166,6 +1452,8 @@ app.get('/api/admin/statistics', async (req, res) => {
 
       stats: {
 
+        // Conservé sous ce nom pour ne pas casser
+        // ton JavaScript existant.
         totalUsers: totalParticipants,
 
         totalSessions,
@@ -1185,7 +1473,6 @@ app.get('/api/admin/statistics', async (req, res) => {
         activeSessions
 
       }
-
     });
 
   } catch (err) {
@@ -1196,13 +1483,9 @@ app.get('/api/admin/statistics', async (req, res) => {
     );
 
     res.status(500).json({
-
       success: false,
-
       message: err.message
-
     });
-
   }
 });
 // ============================================================
@@ -1271,9 +1554,14 @@ app.get('/api/admin/statistics/monthly', async (req, res) => {
 
 app.get('/api/admin/export-pdf', async (req, res) => {
   try {
+
     const pool = await sql.connect(dbConfig);
 
     let { dateDebut, dateFin } = req.query;
+
+    // =====================================================
+    // DATES PAR DÉFAUT
+    // =====================================================
 
     if (!dateDebut) {
       dateDebut = new Date().toISOString().slice(0, 10);
@@ -1283,19 +1571,47 @@ app.get('/api/admin/export-pdf', async (req, res) => {
       dateFin = dateDebut;
     }
 
-    // Utilisateurs
-    const usersResult = await pool.request()
+
+    // =====================================================
+    // 1. NOMBRE DE PARTICIPANTS ATTENDUS
+    // =====================================================
+    // Une inscription dans SessionParticipants
+    // correspond à une participation attendue.
+    //
+    // On ne fait PLUS :
+    // totalUsers × totalSessions
+    // =====================================================
+
+    const participantsResult = await pool.request()
       .input('dateDebut', sql.Date, dateDebut)
       .input('dateFin', sql.Date, dateFin)
       .query(`
-        SELECT COUNT(*) AS totalUsers
-        FROM Utilisateurs
-        WHERE Role IS NULL OR Role != 'Admin'
+        SELECT COUNT(*) AS totalParticipants
+        FROM SessionParticipants sp
+
+        INNER JOIN Sessions s
+          ON s.Id = sp.SessionId
+
+        INNER JOIN Utilisateurs u
+          ON u.Id = sp.UserId
+
+        WHERE CAST(s.DateCreation AS DATE)
+              BETWEEN @dateDebut AND @dateFin
+
+          AND (
+            u.Role IS NULL
+            OR u.Role != 'Admin'
+          )
       `);
 
-    const totalUsers = usersResult.recordset[0].totalUsers || 0;
+    const totalParticipants =
+      participantsResult.recordset[0].totalParticipants || 0;
 
-    // Sessions
+
+    // =====================================================
+    // 2. NOMBRE DE SESSIONS
+    // =====================================================
+
     const sessionsResult = await pool.request()
       .input('dateDebut', sql.Date, dateDebut)
       .input('dateFin', sql.Date, dateFin)
@@ -1303,29 +1619,41 @@ app.get('/api/admin/export-pdf', async (req, res) => {
         SELECT COUNT(*) AS totalSessions
         FROM Sessions
         WHERE CAST(DateCreation AS DATE)
-        BETWEEN @dateDebut AND @dateFin
+              BETWEEN @dateDebut AND @dateFin
       `);
 
     const totalSessions =
       sessionsResult.recordset[0].totalSessions || 0;
 
-    // Présences et retards
+
+    // =====================================================
+    // 3. PRÉSENCES ET RETARDS
+    // =====================================================
+    // On relie les présences aux sessions concernées.
+    // =====================================================
+
     const presenceResult = await pool.request()
       .input('dateDebut', sql.Date, dateDebut)
       .input('dateFin', sql.Date, dateFin)
       .query(`
         SELECT
           COUNT(*) AS totalPresences,
+
           SUM(
             CASE
-              WHEN UPPER(ISNULL(Statut, 'PRESENT')) = 'RETARD'
+              WHEN UPPER(ISNULL(p.Statut, 'PRESENT')) = 'RETARD'
               THEN 1
               ELSE 0
             END
           ) AS totalRetards
-        FROM Presences
-        WHERE CAST([Timestamp] AS DATE)
-        BETWEEN @dateDebut AND @dateFin
+
+        FROM Presences p
+
+        INNER JOIN Sessions s
+          ON s.Id = p.SessionId
+
+        WHERE CAST(s.DateCreation AS DATE)
+              BETWEEN @dateDebut AND @dateFin
       `);
 
     const totalPresences =
@@ -1334,22 +1662,33 @@ app.get('/api/admin/export-pdf', async (req, res) => {
     const totalRetards =
       presenceResult.recordset[0].totalRetards || 0;
 
-    const totalPossibles =
-      totalUsers * totalSessions;
+
+    // =====================================================
+    // 4. CALCUL DES ABSENCES
+    // =====================================================
 
     const absences = Math.max(
       0,
-      totalPossibles - totalPresences
+      totalParticipants - totalPresences
     );
 
+
+    // =====================================================
+    // 5. CALCUL DU TAUX DE PRÉSENCE
+    // =====================================================
+
     const taux =
-      totalPossibles > 0
+      totalParticipants > 0
         ? Math.round(
-          (totalPresences / totalPossibles) * 100
-        )
+            (totalPresences / totalParticipants) * 100
+          )
         : 0;
 
-    // Enregistrer le rapport
+
+    // =====================================================
+    // 6. ENREGISTRER LE RAPPORT DANS LA TABLE Rapports
+    // =====================================================
+
     const reportResult = await pool.request()
       .input(
         'nomRapport',
@@ -1381,7 +1720,9 @@ app.get('/api/admin/export-pdf', async (req, res) => {
           DateGeneration,
           Statut
         )
+
         OUTPUT INSERTED.Id
+
         VALUES
         (
           @nomRapport,
@@ -1396,10 +1737,19 @@ app.get('/api/admin/export-pdf', async (req, res) => {
     const reportId =
       reportResult.recordset[0].Id;
 
-    // Génération PDF
+
+    // =====================================================
+    // 7. CRÉATION DU PDF
+    // =====================================================
+
     const doc = new PDFDocument({
       margin: 50
     });
+
+
+    // =====================================================
+    // 8. EN-TÊTES HTTP
+    // =====================================================
 
     res.setHeader(
       'Content-Type',
@@ -1411,21 +1761,42 @@ app.get('/api/admin/export-pdf', async (req, res) => {
       `attachment; filename="rapport_${dateDebut}_${dateFin}.pdf"`
     );
 
+
     doc.pipe(res);
+
+
+    // =====================================================
+    // 9. TITRE
+    // =====================================================
 
     doc
       .fontSize(22)
-      .text('SGIP - Rapport de présence', {
-        align: 'center'
-      });
+      .text(
+        'SGIP - Rapport de présence',
+        {
+          align: 'center'
+        }
+      );
 
     doc.moveDown();
+
+
+    // =====================================================
+    // 10. PÉRIODE
+    // =====================================================
 
     doc
       .fontSize(12)
-      .text(`Période : ${dateDebut} au ${dateFin}`);
+      .text(
+        `Période : ${dateDebut} au ${dateFin}`
+      );
 
     doc.moveDown();
+
+
+    // =====================================================
+    // 11. STATISTIQUES
+    // =====================================================
 
     doc
       .fontSize(15)
@@ -1433,16 +1804,41 @@ app.get('/api/admin/export-pdf', async (req, res) => {
 
     doc.moveDown();
 
+
     doc
       .fontSize(12)
-      .text(`Utilisateurs : ${totalUsers}`)
-      .text(`Sessions : ${totalSessions}`)
-      .text(`Présences : ${totalPresences}`)
-      .text(`Retards : ${totalRetards}`)
-      .text(`Absences : ${absences}`)
-      .text(`Taux de présence : ${taux}%`);
+
+      .text(
+        `Participations prévues : ${totalParticipants}`
+      )
+
+      .text(
+        `Sessions : ${totalSessions}`
+      )
+
+      .text(
+        `Présences : ${totalPresences}`
+      )
+
+      .text(
+        `Retards : ${totalRetards}`
+      )
+
+      .text(
+        `Absences : ${absences}`
+      )
+
+      .text(
+        `Taux de présence : ${taux}%`
+      );
+
 
     doc.moveDown();
+
+
+    // =====================================================
+    // 12. DATE DE GÉNÉRATION
+    // =====================================================
 
     doc
       .fontSize(10)
@@ -1450,18 +1846,32 @@ app.get('/api/admin/export-pdf', async (req, res) => {
         `Rapport généré le ${new Date().toLocaleString('fr-FR')}`
       );
 
+
+    // =====================================================
+    // 13. TERMINER LE PDF
+    // =====================================================
+
     doc.end();
 
+
   } catch (err) {
+
     console.error(
       '❌ ERREUR EXPORT PDF :',
       err.message
     );
 
-    res.status(500).json({
-      success: false,
-      message: err.message
-    });
+    // Évite d'essayer d'envoyer du JSON
+    // si le PDF a déjà commencé à être envoyé.
+    if (!res.headersSent) {
+
+      res.status(500).json({
+        success: false,
+        message: err.message
+      });
+
+    }
+
   }
 });
 // Route : Récupérer tous les utilisateurs avec la colonne EstActif
@@ -1609,6 +2019,41 @@ app.post('/api/sessions/add', async (req, res) => {
   } catch (err) {
     console.error("❌ ERREUR BDD :", err.message);
     return res.status(500).json({ error: err.message });
+  }
+});
+// Route : présences des 7 derniers jours (pour le graphique)
+app.get('/api/admin/presences/last7days', async (req, res) => {
+  try {
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request().query(`
+      SELECT CAST(Timestamp AS DATE) AS Jour, COUNT(DISTINCT UserId) AS Total
+      FROM Presences
+      WHERE Timestamp >= DATEADD(DAY, -6, CAST(GETDATE() AS DATE))
+      GROUP BY CAST(Timestamp AS DATE)
+      ORDER BY Jour
+    `);
+    res.json({ success: true, jours: result.recordset });
+  } catch (err) {
+    console.error("❌ Erreur presences 7 jours :", err.message);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Route : présences regroupées par session (pour le graphique)
+app.get('/api/admin/presences/by-session', async (req, res) => {
+  try {
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request().query(`
+      SELECT s.Titre, COUNT(p.Id) AS Total
+      FROM Sessions s
+      LEFT JOIN Presences p ON p.SessionId = s.Id
+      GROUP BY s.Titre
+      ORDER BY Total DESC
+    `);
+    res.json({ success: true, sessions: result.recordset });
+  } catch (err) {
+    console.error("❌ Erreur presences par session :", err.message);
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 // 2. Route pour la synchronisation hors-ligne

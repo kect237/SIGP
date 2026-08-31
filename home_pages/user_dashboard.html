@@ -139,6 +139,16 @@
           <div class="card-sub">Identifiant de connexion</div>
         </div>
       </section>
+      <!-- SESSIONS DISPONIBLES -->
+<section class="sessions-section">
+
+  <h2>Sessions disponibles</h2>
+
+  <div id="sessionsDisponibles">
+    <p>Chargement des sessions...</p>
+  </div>
+
+</section>
     </div>
 
     <!-- Section 2 : Historique de Mes Présences (Masquée par défaut) -->
@@ -200,6 +210,7 @@
         } else {
           document.getElementById('userMatriculeText').textContent = "Matricule introuvable.";
         }
+        chargerSessionsDisponibles();
       } else {
         window.location.href = '../index.html';
       }
@@ -277,6 +288,184 @@
         tbody.innerHTML = '<tr><td colspan="4">Erreur lors de la récupération du journal.</td></tr>';
       }
     }
+    // =====================================================
+// CHARGER LES SESSIONS DISPONIBLES
+// =====================================================
+
+async function chargerSessionsDisponibles() {
+
+  const container =
+    document.getElementById('sessionsDisponibles');
+
+  if (!container) {
+    return;
+  }
+
+  container.innerHTML =
+    '<p>Chargement des sessions...</p>';
+
+  try {
+
+    const response = await fetch(
+      'http://localhost:3001/api/sessions/recent'
+    );
+
+    const data = await response.json();
+
+    if (!data.success) {
+      throw new Error(data.message);
+    }
+
+    const sessions = data.sessions || [];
+
+    // On garde uniquement les sessions actives
+    const sessionsActives = sessions.filter(session =>
+      session.EstActive === true ||
+      session.EstActive === 1
+    );
+
+    if (sessionsActives.length === 0) {
+
+      container.innerHTML = `
+        <div class="empty-session">
+          Aucune session active actuellement.
+        </div>
+      `;
+
+      return;
+    }
+
+    container.innerHTML =
+      sessionsActives.map(session => {
+
+        const date = new Date(session.DateCreation);
+
+        const dateFormatee =
+          date.toLocaleString('fr-FR');
+
+        return `
+          <div class="session-card">
+
+            <div>
+              <h3>
+                ${session.Titre || 'Session'}
+              </h3>
+
+              <p>
+                Responsable :
+                ${session.Responsable || '-'}
+              </p>
+
+              <p>
+                📅 ${dateFormatee}
+              </p>
+
+            </div>
+
+            <button
+              class="btn-participer"
+              onclick="participerSession(${session.Id})"
+            >
+              Participer
+            </button>
+
+          </div>
+        `;
+
+      }).join('');
+
+  } catch (error) {
+
+    console.error(
+      '❌ Erreur chargement sessions :',
+      error
+    );
+
+    container.innerHTML = `
+      <p style="color:red;">
+        Impossible de charger les sessions.
+      </p>
+    `;
+  }
+}
+// =====================================================
+// PARTICIPER À UNE SESSION
+// =====================================================
+
+async function participerSession(sessionId) {
+
+  const userData =
+    localStorage.getItem('user');
+
+  if (!userData) {
+
+    alert(
+      'Utilisateur non connecté.'
+    );
+
+    return;
+  }
+
+  const user =
+    JSON.parse(userData);
+
+  if (!user.id) {
+
+    alert(
+      'Identifiant utilisateur introuvable.'
+    );
+
+    return;
+  }
+
+  try {
+
+    const response = await fetch(
+      `http://localhost:3001/api/sessions/${sessionId}/participer`,
+      {
+        method: 'POST',
+
+        headers: {
+          'Content-Type': 'application/json'
+        },
+
+        body: JSON.stringify({
+          userId: user.id
+        })
+      }
+    );
+
+    const data =
+      await response.json();
+
+    if (data.success) {
+
+      alert(
+        '✅ ' + data.message
+      );
+
+      // Recharge les sessions
+      chargerSessionsDisponibles();
+
+    } else {
+
+      alert(
+        '⚠️ ' + data.message
+      );
+    }
+
+  } catch (error) {
+
+    console.error(
+      '❌ Erreur participation :',
+      error
+    );
+
+    alert(
+      'Impossible de contacter le serveur.'
+    );
+  }
+}
   </script>
   <script>
     document.addEventListener("DOMContentLoaded" ,

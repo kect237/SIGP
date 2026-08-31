@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SGIP - Organisation</title>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
   <!-- CHARGER LES 2 CSS -->
   <link rel="stylesheet" href="/CSS/admin_dashboard.css">
   <link rel="stylesheet" href="/CSS/dashboard.css">
@@ -313,6 +313,8 @@
 
             fetchAdminStats();
             loadRecentSessions();
+            chargerGraphique7Jours();
+            chargerGraphiqueParSession();
 
         }
 
@@ -623,6 +625,8 @@ if (
           <button onclick="window.viewUser('${u.Id}')" style="border:none; background:none; cursor:pointer; font-size:1.1em;" title="Voir">👁️</button>
           <button onclick="window.editUser('${u.Id}')" style="border:none; background:none; cursor:pointer; font-size:1.1em;" title="Modifier">✏️</button>
           <button onclick="window.deleteUser('${u.Id}')" style="border:none; background:none; cursor:pointer; font-size:1.1em; color:#dc3545;" title="Supprimer">🗑️</button>
+          <button class="btn btn-outline"onclick="genererBadge('${u.Id}')"> 🎫 Générer badge
+</button>
         </td>
       </tr>
     `;
@@ -748,7 +752,23 @@ if (
         };
       }
 
+// =====================================================
+// GÉNÉRER LE BADGE D'UN UTILISATEUR
+// =====================================================
+window.genererBadge = function(userId) {
 
+  console.log("🎫 Génération du badge :", userId);
+
+  if (!userId) {
+    alert("Identifiant utilisateur introuvable.");
+    return;
+  }
+
+  window.open(
+    `badge.html?userId=${encodeURIComponent(userId)}`,
+    "_blank"
+  );
+};
       // Fonction pour fermer une session active
       async function closeSession(id) {
         if (!confirm("Voulez-vous fermer cette session ?")) return;
@@ -2396,6 +2416,83 @@ function mettreAJourStatsSessions(sessions) {
 
   }
 
+}
+let chart7Jours = null;
+let chartParSession = null;
+
+async function chargerGraphique7Jours() {
+  try {
+    const res = await fetch('http://localhost:3001/api/admin/presences/last7days');
+    const data = await res.json();
+    if (!data.success) return;
+
+    const labels = data.jours.map(j => new Date(j.Jour).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }));
+    const valeurs = data.jours.map(j => j.Total);
+
+    const ctx = document.getElementById('chart-7-jours');
+    if (!ctx) return;
+
+    if (chart7Jours) chart7Jours.destroy();
+
+    chart7Jours = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Présences',
+          data: valeurs,
+          backgroundColor: '#6458FF',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      }
+    });
+  } catch (err) {
+    console.error("❌ Erreur graphique 7 jours :", err);
+  }
+}
+
+async function chargerGraphiqueParSession() {
+  try {
+    const res = await fetch('http://localhost:3001/api/admin/presences/by-session');
+    const data = await res.json();
+    if (!data.success) return;
+
+    const labels = data.sessions.map(s => s.Titre || '?');
+    const valeurs = data.sessions.map(s => s.Total);
+
+    const ctx = document.getElementById('chart-par-session');
+    if (!ctx) return;
+
+    if (chartParSession) chartParSession.destroy();
+
+    chartParSession = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Présences',
+          data: valeurs,
+          backgroundColor: '#22C55E',
+          borderRadius: 6
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      }
+    });
+  } catch (err) {
+    console.error("❌ Erreur graphique par session :", err);
+  }
 }
 
 

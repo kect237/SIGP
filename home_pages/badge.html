@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Badge de présence</title>
+
+  <!-- Génération QR Code -->
+  <script
+    src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js">
+  </script>
+
+  <style>
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+
+      background: #f1f5f9;
+
+      font-family:
+        Arial,
+        Helvetica,
+        sans-serif;
+    }
+
+    .badge {
+      width: 380px;
+      min-height: 540px;
+
+      background: white;
+
+      border-radius: 22px;
+
+      box-shadow:
+        0 15px 40px rgba(0, 0, 0, 0.12);
+
+      overflow: hidden;
+
+      position: relative;
+
+      text-align: center;
+    }
+
+    /* =========================
+       EN-TÊTE
+       ========================= */
+
+    .badge-header {
+      background: linear-gradient(
+        135deg,
+        #2563eb,
+        #1d4ed8
+      );
+
+      color: white;
+
+      padding: 25px 20px 30px;
+    }
+
+    .logo {
+      width: 55px;
+      height: 55px;
+
+      margin: 0 auto 10px;
+
+      border: 2px solid white;
+
+      border-radius: 14px;
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      font-size: 25px;
+    }
+
+    .organisation {
+      font-size: 21px;
+      font-weight: bold;
+
+      letter-spacing: 1px;
+    }
+
+    .system-title {
+      margin-top: 6px;
+
+      font-size: 10px;
+
+      opacity: 0.9;
+
+      letter-spacing: 0.5px;
+    }
+
+    /* =========================
+       INFORMATIONS
+       ========================= */
+
+    .badge-body {
+      padding: 25px 25px 30px;
+    }
+
+    .badge-label {
+      font-size: 11px;
+
+      color: #64748b;
+
+      text-transform: uppercase;
+
+      letter-spacing: 1px;
+
+      margin-bottom: 5px;
+    }
+
+    .user-name {
+      font-size: 24px;
+
+      font-weight: bold;
+
+      color: #0f172a;
+
+      margin-bottom: 5px;
+    }
+
+    .user-firstname {
+      font-size: 16px;
+
+      color: #475569;
+
+      margin-bottom: 20px;
+    }
+
+    .matricule {
+      display: inline-block;
+
+      padding: 8px 18px;
+
+      background: #eff6ff;
+
+      color: #1d4ed8;
+
+      border-radius: 20px;
+
+      font-weight: bold;
+
+      font-size: 14px;
+    }
+
+    /* =========================
+       QR CODE
+       ========================= */
+
+    .qr-container {
+      margin: 25px auto 15px;
+
+      width: 210px;
+      height: 210px;
+
+      display: flex;
+
+      justify-content: center;
+
+      align-items: center;
+
+      background: white;
+
+      padding: 10px;
+
+      border: 1px solid #e2e8f0;
+
+      border-radius: 12px;
+    }
+
+    #qrcode img,
+    #qrcode canvas {
+      max-width: 185px;
+      max-height: 185px;
+    }
+
+    .scan-text {
+      font-size: 12px;
+
+      color: #64748b;
+
+      margin-top: 10px;
+    }
+
+    /* =========================
+       PIED
+       ========================= */
+
+    .badge-footer {
+
+      margin-top: 20px;
+
+      padding-top: 15px;
+
+      border-top: 1px solid #e2e8f0;
+
+      font-size: 11px;
+
+      color: #64748b;
+    }
+
+    /* =========================
+       BOUTON IMPRESSION
+       ========================= */
+
+    .print-button {
+
+      position: fixed;
+
+      bottom: 25px;
+      right: 25px;
+
+      border: none;
+
+      padding: 13px 22px;
+
+      background: #16a34a;
+
+      color: white;
+
+      border-radius: 10px;
+
+      font-weight: bold;
+
+      cursor: pointer;
+
+      font-size: 14px;
+    }
+
+    .print-button:hover {
+      background: #15803d;
+    }
+
+    /* =========================
+       IMPRESSION
+       ========================= */
+
+    @media print {
+
+      body {
+        background: white;
+      }
+
+      .badge {
+
+        box-shadow: none;
+
+        border: 1px solid #ddd;
+
+      }
+
+      .print-button {
+        display: none;
+      }
+
+    }
+
+  </style>
+
+</head>
+
+
+<body>
+
+
+  <!-- =========================
+       BADGE
+       ========================= -->
+
+  <div class="badge">
+
+
+    <!-- EN-TÊTE -->
+
+    <div class="badge-header">
+
+      <div class="logo">
+        🛡️
+      </div>
+
+      <div class="organisation">
+        ORGANISATION
+      </div>
+
+      <div class="system-title">
+        SYSTÈME INTELLIGENT DE GESTION DES PRÉSENCES
+      </div>
+
+    </div>
+
+
+    <!-- CORPS -->
+
+    <div class="badge-body">
+
+
+      <div class="badge-label">
+        Badge personnel
+      </div>
+
+
+      <div
+        class="user-name"
+        id="userNom"
+      >
+        Chargement...
+      </div>
+
+
+      <div
+        class="user-firstname"
+        id="userPrenom"
+      >
+        -
+      </div>
+
+
+      <div
+        class="matricule"
+        id="userMatricule"
+      >
+        Matricule : -
+      </div>
+
+
+      <!-- QR -->
+
+      <div class="qr-container">
+
+        <div id="qrcode"></div>
+
+      </div>
+
+
+      <div class="scan-text">
+        Présentez ce QR Code lors du contrôle de présence
+      </div>
+
+
+      <div class="badge-footer">
+
+        Badge permanent lié au compte utilisateur
+
+      </div>
+
+
+    </div>
+
+  </div>
+
+
+  <!-- =========================
+       BOUTON IMPRIMER
+       ========================= -->
+
+  <button
+    class="print-button"
+    onclick="window.print()"
+  >
+    🖨️ Imprimer le badge
+  </button>
+
+
+  <script>
+
+    // =================================================
+    // RÉCUPÉRER L'ID DE L'UTILISATEUR
+    // =================================================
+
+    const params =
+      new URLSearchParams(
+        window.location.search
+      );
+
+    const userId =
+      params.get('userId');
+
+
+    if (!userId) {
+
+      alert(
+        'Identifiant utilisateur manquant.'
+      );
+
+    } else {
+
+      chargerBadge(userId);
+
+    }
+
+
+    // =================================================
+    // CHARGER LE BADGE
+    // =================================================
+
+    async function chargerBadge(userId) {
+
+      try {
+
+        const response =
+          await fetch(
+            `http://localhost:3001/api/admin/users/${userId}/badge`
+          );
+
+
+        const data =
+          await response.json();
+
+
+        if (!data.success) {
+
+          throw new Error(
+            data.message
+          );
+
+        }
+
+
+        const user =
+          data.user;
+
+
+        // Nom
+
+        document.getElementById(
+          'userNom'
+        ).textContent =
+          user.nom || '-';
+
+
+        // Prénom
+
+        document.getElementById(
+          'userPrenom'
+        ).textContent =
+          user.prenom || '-';
+
+
+        // Matricule
+
+        document.getElementById(
+          'userMatricule'
+        ).textContent =
+          `Matricule : ${user.matricule || '-'}`;
+
+
+        // =================================================
+        // GÉNÉRER LE QR CODE
+        // =================================================
+
+        new QRCode(
+          document.getElementById('qrcode'),
+          {
+            text: data.qrData,
+
+            width: 185,
+            height: 185,
+
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+
+            correctLevel:
+              QRCode.CorrectLevel.H
+          }
+        );
+
+
+      } catch (error) {
+
+        console.error(
+          '❌ Erreur badge :',
+          error
+        );
+
+        document.getElementById(
+          'userNom'
+        ).textContent =
+          'Erreur';
+
+
+        alert(
+          'Impossible de générer le badge.'
+        );
+
+      }
+
+    }
+
+  </script>
+
+
+</body>
+
+</html>
