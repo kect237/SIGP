@@ -160,7 +160,7 @@
         if (data.success) {
           document.getElementById('stat-total-users').textContent = data.stats.totalUsers;
           document.getElementById('stat-presents-today').textContent = data.stats.presentsToday;
-          document.getElementById('stat-presence-rate').textContent = `${data.stats.presenceRate}%`;
+          document.getElementById('stat-presence-rate').textContent = data.stats.presenceRate + "%";
           document.getElementById('stat-active-sessions').textContent = data.stats.activeSessions;
         }
       } catch (err) {
